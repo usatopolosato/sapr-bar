@@ -294,3 +294,13 @@ QLineEdit[invalid="true"], QLineEdit[invalid="true"]:focus {
     background: ${error_background};
     border-color: ${error_border};
 }
+#plotsCard QStackedWidget, #epuresPage, #graphPage, #tablePage {
+    background: ${panel};
+}
+#formulasView {
+    background: ${panel};
+    color: ${text};
+    border: none;
+    font-family: "Segoe UI";
+    font-size: 12px;
+}

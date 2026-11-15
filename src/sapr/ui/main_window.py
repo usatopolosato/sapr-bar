@@ -15,13 +15,14 @@ from ..domain import StructuralModel, validate_model
 from ..storage import Project, ProjectStore
 
 from .loader import load_form
-from .pages.placeholder import PlaceholderPage
+from .pages.postprocessor import PostprocessorPage
 from .pages.preprocessor import PreprocessorPage
 from .pages.processor import ProcessorPage
 from .pages.project_hub import ProjectHubPage
 from .pages.welcome import WelcomePage
 from .project_dialog import ProjectDialog
 from .processor_task import ProcessorTask
+from .postprocessor_task import PostprocessorTask, ReportTask
 from .theme import ThemeColors, ThemeManager, ThemeMode
 
 
@@ -55,15 +56,14 @@ class MainWindow(QMainWindow):
         self._processor_fingerprint = ''
         self._processor_signature = None
         self._processor_task = None
+        self._postprocessor_task = None
+        self._report_task = None
         self.current_page = Page.WELCOME
         self.welcome_page = WelcomePage(self)
         self.project_page = ProjectHubPage(self)
         self.preprocessor_page = PreprocessorPage(self)
         self.processor_page = ProcessorPage(self)
-        self.postprocessor_page = PlaceholderPage(
-            'Этап 3', 'Постпроцессор',
-            'Усилия напряжения и перемещения\nЭпюры и отчёт', self,
-        )
+        self.postprocessor_page = PostprocessorPage(self)
         self._pages = {
             Page.WELCOME: self.welcome_page,
             Page.PROJECT: self.project_page,
@@ -110,7 +110,8 @@ class MainWindow(QMainWindow):
         self.project_page.homeRequested.connect(partial(self.navigate, Page.WELCOME))
         self.processor_page.preprocessorRequested.connect(partial(self.navigate, Page.PREPROCESSOR))
         self.processor_page.calculateRequested.connect(self.calculate_project)
-        self.postprocessor_page.backRequested.connect(partial(self.navigate, Page.PROJECT))
+        self.postprocessor_page.processorRequested.connect(partial(self.navigate, Page.PROCESSOR))
+        self.postprocessor_page.reportRequested.connect(self.export_report)
         self.homeButton.clicked.connect(partial(self.navigate, Page.WELCOME))
         self.preprocessor_page.modelChanged.connect(self._model_changed)
         self.preprocessor_page.saveRequested.connect(self.save_project)
@@ -174,6 +175,7 @@ class MainWindow(QMainWindow):
         '''
         self.welcome_page.structure_view.set_theme(colors)
         self.preprocessor_page.structure_view.set_theme(colors)
+        self.postprocessor_page.set_theme(colors)
         self._sync_theme_menu()
 
     def navigate(self, page: Page, checked: bool = False) -> None:
@@ -189,9 +191,12 @@ class MainWindow(QMainWindow):
         self.pageStack.setCurrentWidget(self._page_containers[page])
         if page in self._nav_buttons:
             self._nav_buttons[page].setChecked(True)
-        if page is Page.PROCESSOR:
+        if page in (Page.PROCESSOR, Page.POSTPROCESSOR):
             self.preprocessor_page.commit_pending_edits()
-            self._refresh_processor()
+            if page is Page.POSTPROCESSOR:
+                self._refresh_postprocessor()
+            else:
+                self._refresh_processor()
 
     def _activate_project(self, project: Project) -> None:
         '''Загружает сохранённую модель в рабочее пространство.
@@ -276,14 +281,17 @@ class MainWindow(QMainWindow):
         self._processor_signature = None
         self._processor_task = None
         self.processor_page.set_availability(False, 'Проверьте проект в препроцессоре', reset=True)
+        self._clear_postprocessor('Проверьте проект и выполните расчёт')
 
     def _refresh_processor(self) -> bool:
         '''Проверяет актуальность файлов и отсутствие несохранённого ввода.'''
         if self.current_project is None:
             self.processor_page.set_availability(False, 'Выберите проект')
+            self._clear_postprocessor('Выберите проект')
             return False
         if self._dirty or self.preprocessor_page.has_pending_edits:
             self.processor_page.set_availability(False, 'Данные изменены. Проверьте проект в препроцессоре')
+            self._clear_postprocessor('Данные изменены. Повторите проверку и расчёт')
             return False
         try:
             _, fingerprint = self._store.read_for_processor(self.current_project)
@@ -293,10 +301,13 @@ class MainWindow(QMainWindow):
             self._processor_task = None
             prepared_exists = any((self.current_project.path / name).exists() for name in ('project.cnx', 'project.ldx'))
             self.processor_page.set_availability(False, str(error), error=self.current_project.validated or prepared_exists)
+            self._clear_postprocessor(str(error), error=self.current_project.validated or prepared_exists)
             return False
         changed = bool(self._processor_fingerprint and fingerprint != self._processor_fingerprint)
         self._processor_fingerprint = fingerprint
         self.processor_page.set_availability(True, 'CNX и LDX проверены', reset=changed)
+        if changed:
+            self._clear_postprocessor('Файлы изменены. Повторите расчёт')
         if self._processor_task is not None:
             self.processor_page.set_busy()
         return True
@@ -306,6 +317,7 @@ class MainWindow(QMainWindow):
         if self._processor_task is not None or not self._refresh_processor():
             return
         self._processor_revision += 1
+        self._clear_postprocessor('Выполняется расчёт процессора')
         task = ProcessorTask(self.current_project, self._processor_revision)
         task.signals.finished.connect(self._processor_finished)
         self._processor_task = task
@@ -319,17 +331,87 @@ class MainWindow(QMainWindow):
         self._processor_task = None
         if error:
             self.processor_page.set_availability(False, error, reset=True, error=True)
+            self._clear_postprocessor(error, error=True)
             return
         if not self._refresh_processor():
             return
         if fingerprint != self._processor_fingerprint:
             self.processor_page.set_availability(False, 'Данные изменились. Повторите проверку', reset=True)
+            self._clear_postprocessor('Данные изменились. Повторите проверку и расчёт')
             return
         self.processor_page.set_result(result)
+        if self.current_page is Page.POSTPROCESSOR:
+            self._refresh_postprocessor()
+
+    def _clear_postprocessor(self, message: str, *, error: bool = False) -> None:
+        '''Скрывает поля НДС и отзывает запись отчёта устаревшей модели.'''
+        self._postprocessor_task = None
+        if self._report_task is not None:
+            self._report_task.cancelled.set()
+            self._report_task = None
+        self.postprocessor_page.set_unavailable(message, error=error)
+
+    def _refresh_postprocessor(self) -> bool:
+        '''Разрешает показ НДС только для актуального успешного расчёта.'''
+        if not self._refresh_processor():
+            return False
+        if self._processor_task is not None:
+            self._clear_postprocessor('Выполняется расчёт процессора')
+            return False
+        source = self.processor_page.result
+        if source is None:
+            self._clear_postprocessor('Выполните расчёт в процессоре')
+            return False
+        result = self.postprocessor_page.result
+        if result is not None and result.processor is source:
+            return True
+        if self._postprocessor_task is not None and self._postprocessor_task.source is source:
+            return False
+        self.postprocessor_page.set_unavailable('Подготовка эпюр')
+        task = PostprocessorTask(source, self._processor_revision, self._processor_fingerprint)
+        task.signals.finished.connect(self._postprocessor_finished)
+        self._postprocessor_task = task
+        QThreadPool.globalInstance().start(task)
+        return False
+
+    def _postprocessor_finished(self, revision: int, result, fingerprint: str, error: str) -> None:
+        '''Отбрасывает запоздалые функции после изменения модели или файлов.'''
+        if revision != self._processor_revision or self._postprocessor_task is None:
+            return
+        self._postprocessor_task = None
+        if error:
+            self._clear_postprocessor(error, error=True)
+            return
+        if not self._refresh_processor():
+            return
+        if fingerprint != self._processor_fingerprint or result.processor is not self.processor_page.result:
+            self._clear_postprocessor('Данные изменены. Повторите расчёт')
+            return
+        self.postprocessor_page.set_result(result)
+
+    def export_report(self) -> None:
+        '''Запускает запись отчёта после повторной проверки актуальности файлов.'''
+        if self._report_task is not None or not self._refresh_postprocessor():
+            return
+        task = ReportTask(self.current_project, self.postprocessor_page.result, self._processor_revision,
+                          self._processor_fingerprint, self.postprocessor_page.subdivisionsSpin.value())
+        task.signals.finished.connect(self._report_finished)
+        self._report_task = task
+        self.postprocessor_page.show_status('Сохранение отчёта')
+        QThreadPool.globalInstance().start(task)
+
+    def _report_finished(self, revision: int, path, fingerprint: str, error: str) -> None:
+        '''Показывает результат записи только в том проекте, который её запустил.'''
+        if revision != self._processor_revision or self._report_task is None:
+            return
+        self._report_task = None
+        if not self._refresh_postprocessor():
+            return
+        self.postprocessor_page.show_status(error if error else f'Отчёт сохранён - {path.name}', error=bool(error))
 
     def _watch_processor_files(self) -> None:
         '''Скрывает старые результаты после внешнего изменения файлов.'''
-        if self.current_page is not Page.PROCESSOR or self.current_project is None:
+        if self.current_page not in (Page.PROCESSOR, Page.POSTPROCESSOR) or self.current_project is None:
             return
         try:
             signature = self._store.file_signature(self.current_project.path)
@@ -340,6 +422,7 @@ class MainWindow(QMainWindow):
             self._processor_task = None
             self._processor_signature = signature
             self.processor_page.set_availability(False, 'Файлы изменены. Проверьте проект в препроцессоре', reset=True)
+            self._clear_postprocessor('Файлы изменены. Повторите проверку и расчёт')
             self._refresh_processor()
 
     def _update_title(self) -> None:
