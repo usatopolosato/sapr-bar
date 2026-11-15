@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sapr-bar"
+version = "0.1.0"
+description = "САПР стержневых систем: растяжение и сжатие"
+requires-python = ">=3.11"
+dependencies = ["PyQt6>=6.6.1,<7"]
+authors = [{name = "usatopolosato"}]
+
+[project.gui-scripts]
+sapr-bar = "sapr.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sapr = ["resources/forms/*.ui", "resources/styles/*.qss"]
