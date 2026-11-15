@@ -4,8 +4,8 @@ from enum import Enum
 from functools import partial
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation
-from PyQt6.QtGui import QKeySequence, QShortcut
-from PyQt6.QtWidgets import QButtonGroup, QDialog, QGraphicsOpacityEffect, QMainWindow
+from PyQt6.QtGui import QActionGroup, QKeySequence, QShortcut
+from PyQt6.QtWidgets import QButtonGroup, QDialog, QGraphicsOpacityEffect, QMainWindow, QMenu, QToolButton
 
 from .loader import load_form
 from .pages.placeholder import PlaceholderPage
@@ -13,6 +13,7 @@ from .pages.preprocessor import PreprocessorPage
 from .pages.project_hub import ProjectHubPage
 from .pages.welcome import WelcomePage
 from .project_dialog import ProjectDialog
+from .theme import ThemeColors, ThemeManager, ThemeMode
 
 
 class Page(Enum):
@@ -26,11 +27,16 @@ class Page(Enum):
 
 
 class MainWindow(QMainWindow):
-    '''Связывает страницы сигналами и сохраняет состояние текущего сеанса.'''
+    '''Связывает страницы и оформление рабочего пространства.
 
-    def __init__(self) -> None:
+    Args:
+        theme_manager: Менеджер общей темы приложения.
+    '''
+
+    def __init__(self, theme_manager: ThemeManager) -> None:
         super().__init__()
         load_form('main_window.ui', self)
+        self._theme_manager = theme_manager
         self.project_names = ['Демонстрационный проект']
         self.current_project = ''
         self.current_page = Page.WELCOME
@@ -39,11 +45,11 @@ class MainWindow(QMainWindow):
         self.preprocessor_page = PreprocessorPage(self)
         self.processor_page = PlaceholderPage(
             'Этап 2', 'Процессор',
-            'Расчёт перемещений узлов стержневой системы\nМодуль будет реализован на следующем этапе', self,
+            'Расчёт перемещений узлов', self,
         )
         self.postprocessor_page = PlaceholderPage(
             'Этап 3', 'Постпроцессор',
-            'Продольные силы и нормальные напряжения\nПеремещения и эпюры\nТаблицы и отчёт', self,
+            'Усилия напряжения и перемещения\nЭпюры и отчёт', self,
         )
         self._pages = {
             Page.WELCOME: self.welcome_page,
@@ -54,6 +60,9 @@ class MainWindow(QMainWindow):
         }
         for page in self._pages.values():
             self.pageStack.addWidget(page)
+        self._setup_theme_menu()
+        self._theme_manager.changed.connect(self._apply_theme)
+        self._apply_theme(self._theme_manager.colors)
         self._nav_buttons = {
             Page.PROJECT: self.hubNavButton,
             Page.PREPROCESSOR: self.preprocessorNavButton,
@@ -89,6 +98,51 @@ class MainWindow(QMainWindow):
             shortcut.activated.connect(action)
             self._shortcuts.append(shortcut)
         self.navigate(Page.WELCOME, animate=False)
+
+    def _setup_theme_menu(self) -> None:
+        '''Создаёт меню выбора системной светлой или тёмной темы.'''
+        self._theme_actions = {}
+        self._theme_action_group = QActionGroup(self)
+        self._theme_action_group.setExclusive(True)
+        menu = QMenu(self.themeButton)
+        for mode, title in (
+            (ThemeMode.SYSTEM, 'Системная'),
+            (ThemeMode.LIGHT, 'Светлая'),
+            (ThemeMode.DARK, 'Тёмная'),
+        ):
+            action = menu.addAction(title)
+            action.setCheckable(True)
+            self._theme_action_group.addAction(action)
+            action.triggered.connect(partial(self._choose_theme, mode))
+            self._theme_actions[mode] = action
+        self.themeButton.setMenu(menu)
+        self.themeButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+    def _choose_theme(self, mode: ThemeMode, checked: bool = False) -> None:
+        '''Применяет выбранный пользователем режим оформления.
+
+        Args:
+            mode: Выбранная тема или следование системе.
+            checked: Состояние действия меню из сигнала Qt.
+        '''
+        self._theme_manager.set_mode(mode)
+        self._sync_theme_menu()
+
+    def _sync_theme_menu(self) -> None:
+        '''Согласует отметку меню с выбранным режимом оформления.'''
+        current = self._theme_actions[self._theme_manager.mode]
+        current.setChecked(True)
+        self.themeButton.setToolTip(f'Тема - {current.text()}')
+
+    def _apply_theme(self, colors: ThemeColors) -> None:
+        '''Обновляет графические сцены при смене общей палитры.
+
+        Args:
+            colors: Цвета активной темы.
+        '''
+        self.welcome_page.structure_view.set_theme(colors)
+        self.preprocessor_page.structure_view.set_theme(colors)
+        self._sync_theme_menu()
 
     def navigate(self, page: Page, checked: bool = False, *, animate: bool = True) -> None:
         '''Переключает страницу и согласует элементы навигации.

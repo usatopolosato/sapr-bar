@@ -4,7 +4,7 @@ from math import ceil, floor
 from decimal import Decimal
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen, QPolygonF
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PyQt6.QtWidgets import (
     QGraphicsItem,
     QGraphicsRectItem,
@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from ..preview_data import PREVIEW_BARS, PREVIEW_LOADS
 from ..formatting import format_quantity
+from ..theme import DARK_COLORS, ThemeColors
 
 
 class BarItem(QGraphicsRectItem):
@@ -23,15 +24,17 @@ class BarItem(QGraphicsRectItem):
     Args:
         rect: Границы изображения стержня.
         index: Индекс стержня в демонстрационном наборе.
+        colors: Цвета текущей темы интерфейса.
     '''
 
-    def __init__(self, rect: QRectF, index: int) -> None:
+    def __init__(self, rect: QRectF, index: int, colors: ThemeColors = DARK_COLORS) -> None:
         super().__init__(rect)
         self.setData(0, index)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(f'Стержень {index + 1:02d} - нажмите для просмотра свойств')
+        self.setToolTip(f'Стержень {index + 1:02d}')
+        self.colors = colors
         self._hovered = False
 
     def paint(self, painter: QPainter, option, widget=None) -> None:
@@ -43,14 +46,11 @@ class BarItem(QGraphicsRectItem):
             widget: Виджет, отображающий сцену.
         '''
         rect = self.rect()
-        gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         active = self.isSelected() or self._hovered
-        gradient.setColorAt(0, QColor('#3b716c' if active else '#2a3b4e'))
-        gradient.setColorAt(1, QColor('#224840' if active else '#1b2939'))
-        painter.setBrush(gradient)
-        painter.setPen(QPen(QColor('#90e8cc' if active else '#657d96'), 1.8))
+        painter.setBrush(QColor(self.colors.bar_selected if active else self.colors.bar_fill))
+        painter.setPen(QPen(QColor(self.colors.bar_selected_border if active else self.colors.bar_border), 1.6))
         painter.drawRoundedRect(rect, 3, 3)
-        painter.setPen(QColor('#c1f5e5' if active else '#bdcddd'))
+        painter.setPen(QColor(self.colors.bar_selected_text if active else self.colors.bar_text))
         painter.setFont(QFont('Segoe UI', 12, QFont.Weight.DemiBold))
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f'{self.data(0) + 1:02d}')
 
@@ -94,7 +94,9 @@ class StructureView(QGraphicsView):
         self._bars: list[BarItem] = []
         self._load_items: list[QGraphicsItem] = []
         self._quantity_labels = []
-        self._scientific = False
+        self._compact_numbers = True
+        self._colors = DARK_COLORS
+        self._theme_bindings: list[tuple[QGraphicsItem, str, str]] = []
         self.setFrameShape(QGraphicsView.Shape.NoFrame)
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -102,7 +104,7 @@ class StructureView(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-        self.setBackgroundBrush(QColor('#141d28'))
+        self.setBackgroundBrush(QColor(self._colors.canvas))
         self.setAccessibleName('Интерактивная схема стержневой конструкции')
         self.setAccessibleDescription('Три стержня - выбор также доступен в таблице стержней')
         self.setScene(QGraphicsScene(self))
@@ -132,21 +134,22 @@ class StructureView(QGraphicsView):
         original.deleteLater()
         return view
 
-    def _text(self, x: float, y: float, text: str, color: str = '#9caec3', size: int = 11):
+    def _text(self, x: float, y: float, text: str, color: str = 'muted', size: int = 11):
         '''Добавляет надпись в координатах сцены.
 
         Args:
             x: Горизонтальная координата.
             y: Вертикальная координата.
             text: Содержимое надписи.
-            color: Цвет текста.
+            color: Имя цвета текста в палитре темы.
             size: Размер шрифта в пунктах.
 
         Returns:
             Созданный текстовый элемент сцены.
         '''
         item = self.scene().addSimpleText(text, QFont('Segoe UI', size))
-        item.setBrush(QColor(color))
+        item.setBrush(QColor(getattr(self._colors, color)))
+        self._theme_bindings.append((item, 'brush', color))
         item.setPos(x, y)
         item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         return item
@@ -159,13 +162,15 @@ class StructureView(QGraphicsView):
             y1: Начальная вертикальная координата.
             x2: Конечная горизонтальная координата.
             y2: Конечная вертикальная координата.
-            color: Цвет линии.
+            color: Имя цвета линии в палитре темы.
             width: Толщина линии.
 
         Returns:
             Созданный графический элемент.
         '''
-        return self.scene().addLine(x1, y1, x2, y2, QPen(QColor(color), width))
+        item = self.scene().addLine(x1, y1, x2, y2, QPen(QColor(getattr(self._colors, color)), width))
+        self._theme_bindings.append((item, 'pen', color))
+        return item
 
     def _arrow(self, start: float, end: float, y: float, color: str) -> list[QGraphicsItem]:
         '''Добавляет горизонтальную стрелку нагрузки.
@@ -174,7 +179,7 @@ class StructureView(QGraphicsView):
             start: Координата начала стрелки.
             end: Координата острия.
             y: Высота стрелки.
-            color: Цвет стрелки.
+            color: Имя цвета стрелки в палитре темы.
 
         Returns:
             Элементы линии и наконечника.
@@ -182,51 +187,53 @@ class StructureView(QGraphicsView):
         sign = 1 if end > start else -1
         line = self._line(start, y, end, y, color, 2)
         head = QPolygonF([QPointF(end, y), QPointF(end - sign * 9, y - 4), QPointF(end - sign * 9, y + 4)])
-        triangle = self.scene().addPolygon(head, QPen(QColor(color)), QColor(color))
+        tint = QColor(getattr(self._colors, color))
+        triangle = self.scene().addPolygon(head, QPen(tint), tint)
+        self._theme_bindings.extend([(triangle, 'pen', color), (triangle, 'brush', color)])
         return [line, triangle]
 
     def _build_scene(self) -> None:
         '''Формирует демонстрационную схему без выполнения расчётов.'''
-        axis = self._line(60, 150, 845, 150, '#3e5269')
+        axis = self._line(60, 150, 845, 150, 'axis')
         pen = axis.pen()
         pen.setStyle(Qt.PenStyle.DashLine)
         axis.setPen(pen)
-        self._text(846, 136, 'x', '#7890a9')
+        self._text(846, 136, 'x', 'muted')
         positions = [100.0]
         total_length = sum((bar.length_m for bar in PREVIEW_BARS), Decimal('0'))
         for bar in PREVIEW_BARS:
             positions.append(positions[-1] + float(bar.length_m / total_length * Decimal('640')))
         heights = [44, 64, 50]
         for index, (left, right, height) in enumerate(zip(positions, positions[1:], heights)):
-            bar = BarItem(QRectF(left, 150 - height / 2, right - left, height), index)
+            bar = BarItem(QRectF(left, 150 - height / 2, right - left, height), index, self._colors)
             self.scene().addItem(bar)
             self._bars.append(bar)
-            self._line(left, 190, left, 218, '#486079')
-            self._line(right, 190, right, 218, '#486079')
-            self._line(left, 210, right, 210, '#486079')
-            self._line(left - 4, 215, left + 4, 205, '#7c91a6')
-            self._line(right - 4, 215, right + 4, 205, '#7c91a6')
+            self._line(left, 190, left, 218, 'dimension')
+            self._line(right, 190, right, 218, 'dimension')
+            self._line(left, 210, right, 210, 'dimension')
+            self._line(left - 4, 215, left + 4, 205, 'dimension')
+            self._line(right - 4, 215, right + 4, 205, 'dimension')
             self._quantity_text(0, 222, PREVIEW_BARS[index].length_m, 'м', center=(left + right) / 2)
-        self._line(98, 108, 98, 192, '#b6c9dd', 3)
+        self._line(98, 108, 98, 192, 'bar_border', 3)
         for y in range(116, 201, 12):
-            self._line(81, y, 98, y - 12, '#71879f', 1.4)
+            self._line(81, y, 98, y - 12, 'dimension', 1.4)
         for index, x in enumerate(positions):
-            self._line(x, 101, x, 114, '#647c94')
-            self.scene().addEllipse(x - 13, 75, 26, 26, QPen(QColor('#4d667d')), QColor('#182634'))
-            label = self._text(x - 5, 75, str(index + 1), '#c4d6e7', 10)
+            self._line(x, 101, x, 114, 'dimension')
+            node = self.scene().addEllipse(x - 13, 75, 26, 26, QPen(QColor(self._colors.node_border)), QColor(self._colors.node_fill))
+            self._theme_bindings.extend([(node, 'pen', 'node_border'), (node, 'brush', 'node_fill')])
+            label = self._text(x - 5, 75, str(index + 1), 'text', 10)
             label.setZValue(1)
         if not self._compact:
-            self._load_items.extend(self._arrow(positions[1] - 3, positions[1] - 92, 150, '#f4b976'))
-            self._load_items.extend(self._arrow(positions[-1] + 6, positions[-1] + 95, 150, '#f4b976'))
-            self._load_items.append(self._quantity_text(positions[1] - 88, 180, PREVIEW_LOADS[0].value_si, 'Н', 'Сила', '#e7b37b'))
-            self._load_items.append(self._quantity_text(positions[-1] + 9, 180, PREVIEW_LOADS[1].value_si, 'Н', 'Сила', '#e7b37b'))
+            self._load_items.extend(self._arrow(positions[1] - 3, positions[1] - 92, 150, 'force'))
+            self._load_items.extend(self._arrow(positions[-1] + 6, positions[-1] + 95, 150, 'force'))
+            self._load_items.append(self._quantity_text(positions[1] - 88, 180, PREVIEW_LOADS[0].value_si, 'Н', 'F', 'force'))
+            self._load_items.append(self._quantity_text(positions[-1] + 9, 180, PREVIEW_LOADS[1].value_si, 'Н', 'F', 'force'))
             for x in range(int(positions[1]) + 9, int(positions[2]) - 20, 40):
-                self._load_items.extend(self._arrow(x, x + 28, 50, '#82cfda'))
-            self._load_items.append(self._quantity_text(positions[1] + 60, 15, PREVIEW_LOADS[2].value_si, 'Н на м', 'Нагрузка', '#82cfda'))
-        self._quantity_text(100, 258, total_length, 'м', 'Длина')
-        self._text(618, 258, 'Схема условная', '#62788e', 10)
+                self._load_items.extend(self._arrow(x, x + 28, 50, 'distributed'))
+            self._load_items.append(self._quantity_text(positions[1] + 60, 15, PREVIEW_LOADS[2].value_si, 'Н на м', 'q', 'distributed'))
+        self._quantity_text(100, 258, total_length, 'м', 'L')
 
-    def _quantity_text(self, x: float, y: float, value: Decimal, unit: str, prefix: str = '', color: str = '#a9bacd', center: float | None = None):
+    def _quantity_text(self, x: float, y: float, value: Decimal, unit: str, prefix: str = '', color: str = 'muted', center: float | None = None):
         '''Добавляет подпись физической величины в СИ.
 
         Args:
@@ -235,30 +242,51 @@ class StructureView(QGraphicsView):
             value: Точное значение в СИ.
             unit: Подпись единицы измерения.
             prefix: Текст перед числом.
-            color: Цвет подписи.
+            color: Имя цвета подписи в палитре темы.
             center: Центр размерной линии для выравнивания подписи.
 
         Returns:
             Созданная подпись величины.
         '''
-        text = f'{prefix} {format_quantity(value, self._scientific)} {unit}'.strip()
+        text = f'{prefix} {format_quantity(value, self._compact_numbers)} {unit}'.strip()
         item = self._text(x, y, text, color, 10)
         self._quantity_labels.append((item, prefix, value, unit, center))
         if center is not None:
             item.setX(center - item.boundingRect().width() / 2)
         return item
 
-    def set_number_format(self, scientific: bool) -> None:
+    def set_number_format(self, compact: bool) -> None:
         '''Меняет запись чисел в подписях без изменения величин СИ.
 
         Args:
-            scientific: Признак научной записи чисел.
+            compact: Признак краткой автоматической записи чисел.
         '''
-        self._scientific = scientific
+        self._compact_numbers = compact
         for item, prefix, value, unit, center in self._quantity_labels:
-            item.setText(f'{prefix} {format_quantity(value, scientific)} {unit}'.strip())
+            item.setText(f'{prefix} {format_quantity(value, compact)} {unit}'.strip())
             if center is not None:
                 item.setX(center - item.boundingRect().width() / 2)
+
+    def set_theme(self, colors: ThemeColors) -> None:
+        '''Применяет палитру к схеме без изменения масштаба и выбора.
+
+        Args:
+            colors: Цвета светлой или тёмной темы.
+        '''
+        self._colors = colors
+        self.setBackgroundBrush(QColor(colors.canvas))
+        for item, channel, role in self._theme_bindings:
+            color = QColor(getattr(colors, role))
+            if channel == 'pen':
+                pen = item.pen()
+                pen.setColor(color)
+                item.setPen(pen)
+            else:
+                item.setBrush(color)
+        for bar in self._bars:
+            bar.colors = colors
+            bar.update()
+        self.viewport().update()
 
     def select_bar(self, index: int) -> None:
         '''Выделяет стержень по индексу.
@@ -353,10 +381,10 @@ class StructureView(QGraphicsView):
             painter: Контекст отрисовки.
             rect: Видимая область сцены.
         '''
-        painter.fillRect(rect, QColor('#141d28'))
+        painter.fillRect(rect, QColor(self._colors.canvas))
         if not self._grid_visible:
             return
-        painter.setPen(QPen(QColor('#233143'), 0.6))
+        painter.setPen(QPen(QColor(self._colors.grid), 0.6))
         step = 28
         for x in range(floor(rect.left() / step) * step, ceil(rect.right()), step):
             for y in range(floor(rect.top() / step) * step, ceil(rect.bottom()), step):

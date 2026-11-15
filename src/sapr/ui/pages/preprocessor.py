@@ -56,6 +56,10 @@ class PreprocessorPage(QWidget):
         self.gridButton.toggled.connect(self.structure_view.set_grid_visible)
         self.saveProjectButton.clicked.connect(self._show_project_notice)
         self.numberFormatCombo.currentIndexChanged.connect(self._refresh_numbers)
+        self.numberFormatCombo.setToolTip(
+            'Кратко - до трёх знаков после точки в мантиссе\n'
+            'Точно - полная запись исходного значения'
+        )
         self._fill_tables()
         self.barsTable.currentCellChanged.connect(self._table_bar_selected)
         self.structure_view.barSelected.connect(self._select_bar)
@@ -117,7 +121,7 @@ class PreprocessorPage(QWidget):
             value: Значение физической величины.
 
         Returns:
-            Точная десятичная или экспоненциальная запись.
+            Точная десятичная или краткая автоматическая запись.
         '''
         return format_quantity(value, self.numberFormatCombo.currentIndex() == 1)
 

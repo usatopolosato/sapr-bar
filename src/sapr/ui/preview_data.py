@@ -45,7 +45,7 @@ PREVIEW_BARS = (
 )
 
 PREVIEW_LOADS = (
-    PreviewLoad('Сосредоточенная', 'Узел 02', Decimal('-6000'), 'Н'),
-    PreviewLoad('Сосредоточенная', 'Узел 04', Decimal('12000'), 'Н'),
-    PreviewLoad('Распределённая', 'Стержень 02', Decimal('2000'), 'Н на м'),
+    PreviewLoad('Узловая', 'Узел 02', Decimal('-6000'), 'Н'),
+    PreviewLoad('Узловая', 'Узел 04', Decimal('12000'), 'Н'),
+    PreviewLoad('Погонная', 'Стержень 02', Decimal('2000'), 'Н на м'),
 )

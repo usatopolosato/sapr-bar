@@ -12,8 +12,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>1180</width>
-    <height>840</height>
+    <width>1100</width>
+    <height>760</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -91,12 +91,21 @@
         </spacer>
        </item>
        <item>
-        <widget class="QLabel" name="versionBadge">
+        <widget class="QToolButton" name="themeButton">
          <property name="text">
-          <string>Прототип интерфейса</string>
+          <string>Тема</string>
          </property>
-         <property name="role" stdset="0">
-          <string>eyebrow</string>
+         <property name="toolTip">
+          <string>Тема приложения</string>
+         </property>
+         <property name="accessibleName">
+          <string>Выбор темы</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>34</height>
+          </size>
          </property>
         </widget>
        </item>
@@ -138,16 +147,6 @@
          <property name="bottomMargin">
           <number>22</number>
          </property>
-         <item>
-          <widget class="QLabel" name="projectEyebrow">
-           <property name="text">
-            <string>ТЕКУЩИЙ ПРОЕКТ</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>eyebrow</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <widget class="QLabel" name="sidebarProjectLabel">
            <property name="text">
@@ -243,27 +242,6 @@
           </spacer>
          </item>
          <item>
-          <widget class="QLabel" name="sidebarModeLabel">
-           <property name="text">
-            <string>РАСТЯЖЕНИЕ И СЖАТИЕ</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>eyebrow</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="sidebarModeDescription">
-           <property name="text">
-            <string>Линейная статика
-Стержневая система</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <spacer name="sidebarHomeGap">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -282,7 +260,7 @@
          <item>
           <widget class="QPushButton" name="homeButton">
            <property name="text">
-            <string>На главный экран</string>
+            <string>Главное меню</string>
            </property>
            <property name="role" stdset="0">
             <string>secondary</string>
@@ -292,7 +270,7 @@
          <item>
           <widget class="QLabel" name="authorLabel">
            <property name="text">
-            <string>Автор usatopolosato</string>
+            <string>usatopolosato</string>
            </property>
            <property name="role" stdset="0">
             <string>author</string>

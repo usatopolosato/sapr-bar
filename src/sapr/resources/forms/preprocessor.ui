@@ -40,35 +40,12 @@
         <number>6</number>
        </property>
        <item>
-        <widget class="QLabel" name="eyebrowLabel">
-         <property name="text">
-          <string>РАСЧЁТНАЯ МОДЕЛЬ</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>eyebrow</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QLabel" name="titleLabel">
          <property name="text">
           <string>Препроцессор</string>
          </property>
          <property name="role" stdset="0">
           <string>pageTitle</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="subtitleLabel">
-         <property name="text">
-          <string>Конструкция и внешние воздействия</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>muted</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -90,7 +67,7 @@
      <item alignment="Qt::AlignTop">
       <widget class="QLabel" name="demoBadgeLabel">
        <property name="text">
-        <string>Демонстрационная модель</string>
+        <string>Пример модели</string>
        </property>
        <property name="role" stdset="0">
         <string>badge</string>
@@ -296,7 +273,7 @@
           <item>
            <widget class="QLabel" name="canvasTitleLabel">
             <property name="text">
-             <string>Схема конструкции</string>
+             <string>Схема</string>
             </property>
             <property name="role" stdset="0">
              <string>cardTitle</string>
@@ -428,46 +405,6 @@
           </property>
          </widget>
         </item>
-        <item>
-         <layout class="QHBoxLayout" name="canvasLegendLayout">
-          <property name="spacing">
-           <number>12</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="axisLegendLabel">
-            <property name="text">
-             <string>Растяжение и сжатие</string>
-            </property>
-            <property name="role" stdset="0">
-             <string>muted</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="canvasLegendSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>8</width>
-              <height>10</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QLabel" name="unitsLegendLabel">
-            <property name="text">
-             <string>Размеры в метрах</string>
-            </property>
-            <property name="role" stdset="0">
-             <string>muted</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
        </layout>
       </widget>
       <widget class="QFrame" name="dataCard">
@@ -513,7 +450,7 @@
           <item>
            <widget class="QLabel" name="dataTitleLabel">
             <property name="text">
-             <string>Исходные данные</string>
+             <string>Данные</string>
             </property>
             <property name="role" stdset="0">
              <string>cardTitle</string>
@@ -537,7 +474,7 @@
            <widget class="QComboBox" name="numberFormatCombo">
             <property name="minimumSize">
              <size>
-              <width>170</width>
+              <width>100</width>
               <height>34</height>
              </size>
             </property>
@@ -552,14 +489,17 @@
             </property>
             <item>
              <property name="text">
-              <string>Обычная запись</string>
+              <string>Точно</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Научная запись</string>
+              <string>Кратко</string>
              </property>
             </item>
+            <property name="toolTip">
+             <string>Краткая или полная запись чисел</string>
+            </property>
            </widget>
           </item>
          </layout>
@@ -805,35 +745,12 @@
         <number>14</number>
        </property>
        <item>
-        <widget class="QLabel" name="inspectorEyebrowLabel">
-         <property name="text">
-          <string>СВОЙСТВА ЭЛЕМЕНТА</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>eyebrow</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QLabel" name="selectedBarLabel">
          <property name="text">
           <string>Стержень 02</string>
          </property>
          <property name="role" stdset="0">
           <string>cardTitle</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="selectedBarDescription">
-         <property name="text">
-          <string>Постоянное поперечное сечение</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>muted</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -893,14 +810,14 @@
             <bool>true</bool>
            </property>
            <property name="text">
-            <string>2</string>
+            <string>3</string>
            </property>
           </widget>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="areaLabel">
            <property name="text">
-            <string>Площадь сечения A</string>
+            <string>Площадь A</string>
            </property>
            <property name="role" stdset="0">
             <string>muted</string>
@@ -942,7 +859,7 @@
          <item row="4" column="0">
           <widget class="QLabel" name="modulusLabel">
            <property name="text">
-            <string>Модуль упругости E</string>
+            <string>Модуль E</string>
            </property>
            <property name="role" stdset="0">
             <string>muted</string>
@@ -1053,7 +970,7 @@
          <item>
           <widget class="QLabel" name="materialNameLabel">
            <property name="text">
-            <string>Конструкционная сталь</string>
+            <string>Сталь</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
@@ -1075,84 +992,8 @@
          </property>
         </spacer>
        </item>
-       <item>
-        <widget class="QFrame" name="validationDivider">
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Plain</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="validationLayout">
-         <property name="spacing">
-          <number>6</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="validationCaptionLabel">
-           <property name="text">
-            <string>СОСТАВ МОДЕЛИ</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>eyebrow</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="validationLabel">
-           <property name="text">
-            <string>Демонстрационные данные</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>badge</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="modelSummaryLabel">
-           <property name="text">
-            <string>4 узла и 3 стержня</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QLabel" name="selectionHintLabel">
-         <property name="text">
-          <string>Выберите стержень для просмотра параметров</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>muted</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="previewNoticeLabel">
-     <property name="text">
-      <string>Просмотр интерфейса - расчёт не выполняется</string>
-     </property>
-     <property name="role" stdset="0">
-      <string>muted</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
     </widget>
    </item>
   </layout>

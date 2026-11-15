@@ -62,6 +62,9 @@
      <property name="wordWrap">
       <bool>true</bool>
      </property>
+     <property name="visible">
+      <bool>false</bool>
+     </property>
     </widget>
    </item>
    <item>
@@ -116,19 +119,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="sessionDescriptionLabel">
-         <property name="role" stdset="0">
-          <string>muted</string>
-         </property>
-         <property name="text">
-          <string>Проект создаётся в текущем сеансе для просмотра интерфейса</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
         <spacer name="createBottomSpace">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -166,7 +156,7 @@
           <string>eyebrow</string>
          </property>
          <property name="text">
-          <string>ПРОЕКТЫ ТЕКУЩЕГО СЕАНСА</string>
+          <string>Проекты</string>
          </property>
         </widget>
        </item>
@@ -199,8 +189,7 @@
       <string>muted</string>
      </property>
      <property name="text">
-      <string>Прототип интерфейса
-Сохранение на диск будет добавлено на этапе работы с файлами</string>
+      <string>Проекты хранятся только в текущем сеансе</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

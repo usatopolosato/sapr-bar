@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <ui version="4.0">
  <class>PlaceholderPage</class>
  <widget class="QWidget" name="PlaceholderPage">
@@ -92,19 +92,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="placeholderEyebrowLabel">
-        <property name="role" stdset="0">
-         <string>eyebrow</string>
-        </property>
-        <property name="text">
-         <string>СЛЕДУЮЩИЙ ЭТАП</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QLabel" name="moduleTitleLabel">
         <property name="role" stdset="0">
          <string>pageTitle</string>
@@ -181,7 +168,7 @@
          <string>primary</string>
         </property>
         <property name="text">
-         <string>К модулям проекта</string>
+         <string>К проекту</string>
         </property>
        </widget>
       </item>

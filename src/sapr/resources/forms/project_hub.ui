@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <ui version="4.0">
  <class>ProjectHubPage</class>
  <widget class="QWidget" name="ProjectHubPage">
@@ -37,16 +37,6 @@
         <number>10</number>
        </property>
        <item>
-        <widget class="QLabel" name="hubEyebrowLabel">
-         <property name="role" stdset="0">
-          <string>eyebrow</string>
-         </property>
-         <property name="text">
-          <string>РАБОЧЕЕ ПРОСТРАНСТВО</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QLabel" name="projectNameLabel">
          <property name="role" stdset="0">
           <string>pageTitle</string>
@@ -62,19 +52,6 @@
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="hubDescriptionLabel">
-         <property name="role" stdset="0">
-          <string>muted</string>
-         </property>
-         <property name="text">
-          <string>Выберите модуль проекта</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -112,6 +89,9 @@
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -224,9 +204,7 @@
            <string>muted</string>
           </property>
           <property name="text">
-           <string>Геометрия конструкции
-Материалы и нагрузки
-Проверка исходных данных</string>
+           <string>Геометрия и нагрузки</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -264,7 +242,7 @@
            <string>primary</string>
           </property>
           <property name="text">
-           <string>Открыть препроцессор</string>
+           <string>Открыть</string>
           </property>
          </widget>
         </item>
@@ -357,7 +335,7 @@
            <string>muted</string>
           </property>
           <property name="text">
-           <string>Расчёт перемещений узлов конструкции</string>
+           <string>Расчёт перемещений</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -395,7 +373,7 @@
            <string>secondary</string>
           </property>
           <property name="text">
-           <string>Посмотреть</string>
+           <string>Открыть</string>
           </property>
          </widget>
         </item>
@@ -488,8 +466,7 @@
            <string>muted</string>
           </property>
           <property name="text">
-           <string>Усилия напряжения и перемещения
-Таблицы эпюры и отчёт</string>
+           <string>Эпюры и отчёт</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
@@ -527,7 +504,7 @@
            <string>secondary</string>
           </property>
           <property name="text">
-           <string>Посмотреть</string>
+           <string>Открыть</string>
           </property>
          </widget>
         </item>
@@ -535,78 +512,6 @@
       </widget>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QFrame" name="workflowCard">
-     <property name="role" stdset="0">
-      <string>card</string>
-     </property>
-     <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
-     </property>
-     <layout class="QHBoxLayout" name="workflowLayout" stretch="1,1,1">
-      <property name="spacing">
-       <number>14</number>
-      </property>
-      <property name="leftMargin">
-       <number>24</number>
-      </property>
-      <property name="topMargin">
-       <number>22</number>
-      </property>
-      <property name="rightMargin">
-       <number>24</number>
-      </property>
-      <property name="bottomMargin">
-       <number>22</number>
-      </property>
-      <item>
-       <widget class="QLabel" name="workflowFirstLabel">
-        <property name="role" stdset="0">
-         <string>muted</string>
-        </property>
-        <property name="text">
-         <string>Этап 1 - Исходные данные</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="workflowSecondLabel">
-        <property name="role" stdset="0">
-         <string>muted</string>
-        </property>
-        <property name="text">
-         <string>Этап 2 - Расчёт</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="workflowThirdLabel">
-        <property name="role" stdset="0">
-         <string>muted</string>
-        </property>
-        <property name="text">
-         <string>Этап 3 - Результаты</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
    </item>
    <item>
     <spacer name="hubBottomSpace">
@@ -620,20 +525,6 @@
       </size>
      </property>
     </spacer>
-   </item>
-   <item>
-    <widget class="QLabel" name="previewNoticeLabel">
-     <property name="role" stdset="0">
-      <string>muted</string>
-     </property>
-     <property name="text">
-      <string>Доступен просмотр интерфейса препроцессора
-Расчётные модули в разработке</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>
