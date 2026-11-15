@@ -10,6 +10,9 @@ requires-python = ">=3.11"
 dependencies = ["PyQt6>=6.6.1,<7"]
 authors = [{name = "usatopolosato"}]
 
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
 [project.gui-scripts]
 sapr-bar = "sapr.app:main"
 

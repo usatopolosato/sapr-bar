@@ -2,271 +2,158 @@
 <ui version="4.0">
  <class>PreprocessorPage</class>
  <widget class="QWidget" name="PreprocessorPage">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>1140</width>
-    <height>780</height>
-   </rect>
-  </property>
   <property name="windowTitle">
    <string>Препроцессор</string>
   </property>
   <layout class="QVBoxLayout" name="pageLayout">
-   <property name="spacing">
-    <number>14</number>
-   </property>
    <property name="leftMargin">
-    <number>28</number>
+    <number>20</number>
    </property>
    <property name="topMargin">
     <number>20</number>
    </property>
    <property name="rightMargin">
-    <number>28</number>
+    <number>20</number>
    </property>
    <property name="bottomMargin">
     <number>20</number>
    </property>
+   <property name="spacing">
+    <number>12</number>
+   </property>
    <item>
-    <layout class="QHBoxLayout" name="headingLayout" stretch="1,0,0">
+    <layout class="QHBoxLayout" name="headingLayout">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
      <property name="spacing">
-      <number>20</number>
+      <number>10</number>
      </property>
      <item>
-      <layout class="QVBoxLayout" name="titleLayout">
-       <property name="spacing">
-        <number>6</number>
+      <widget class="QLabel" name="titleLabel">
+       <property name="text">
+        <string>Препроцессор</string>
        </property>
-       <item>
-        <widget class="QLabel" name="titleLabel">
-         <property name="text">
-          <string>Препроцессор</string>
-         </property>
-         <property name="role" stdset="0">
-          <string>pageTitle</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+       <property name="role" stdset="0">
+        <string>pageTitle</string>
+       </property>
+      </widget>
      </item>
      <item>
       <spacer name="headingSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <property name="sizeHint" stdset="0">
+       <property name="sizeHint">
         <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item alignment="Qt::AlignTop">
-      <widget class="QLabel" name="demoBadgeLabel">
-       <property name="text">
-        <string>Пример модели</string>
-       </property>
-       <property name="role" stdset="0">
-        <string>badge</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="modeToolbarLayout">
-     <property name="spacing">
-      <number>6</number>
-     </property>
-     <item>
-      <widget class="QPushButton" name="constructionButton">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>38</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Конструкция</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-       <property name="autoExclusive">
-        <bool>true</bool>
-       </property>
-       <property name="role" stdset="0">
-        <string>tool</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="loadsButton">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>38</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Нагрузки</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="autoExclusive">
-        <bool>true</bool>
-       </property>
-       <property name="role" stdset="0">
-        <string>tool</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="dataButton">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>38</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Исходные данные</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="autoExclusive">
-        <bool>true</bool>
-       </property>
-       <property name="role" stdset="0">
-        <string>tool</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="tablesButton">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>38</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Таблицы</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="autoExclusive">
-        <bool>true</bool>
-       </property>
-       <property name="role" stdset="0">
-        <string>tool</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="modeSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
+         <width>8</width>
+         <height>8</height>
         </size>
        </property>
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="saveProjectButton">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>38</height>
-        </size>
-       </property>
+      <widget class="QPushButton" name="validateButton">
        <property name="text">
-        <string>Файл проекта</string>
-       </property>
-       <property name="toolTip">
-        <string>Информация о файле проекта</string>
+        <string>Проверить</string>
        </property>
        <property name="role" stdset="0">
         <string>secondary</string>
        </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="saveProjectButton">
+       <property name="text">
+        <string>Сохранить</string>
+       </property>
+       <property name="role" stdset="0">
+        <string>primary</string>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QSplitter" name="workspaceSplitter">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>1</verstretch>
-      </sizepolicy>
+    <widget class="QLabel" name="statusLabel">
+     <property name="text">
+      <string />
      </property>
+     <property name="role" stdset="0">
+      <string>muted</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QSplitter" name="workspaceSplitter">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="handleWidth">
-      <number>16</number>
-     </property>
-     <property name="childrenCollapsible">
-      <bool>false</bool>
+      <number>12</number>
      </property>
      <widget class="QSplitter" name="modelSplitter">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
       <property name="handleWidth">
-       <number>14</number>
-      </property>
-      <property name="childrenCollapsible">
-       <bool>false</bool>
+       <number>12</number>
       </property>
       <widget class="QFrame" name="canvasCard">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>1</horstretch>
-         <verstretch>3</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
-       </property>
        <property name="role" stdset="0">
         <string>card</string>
        </property>
        <layout class="QVBoxLayout" name="canvasLayout">
-        <property name="spacing">
-         <number>8</number>
-        </property>
         <property name="leftMargin">
-         <number>16</number>
+         <number>12</number>
         </property>
         <property name="topMargin">
-         <number>14</number>
+         <number>12</number>
         </property>
         <property name="rightMargin">
-         <number>16</number>
+         <number>12</number>
         </property>
         <property name="bottomMargin">
          <number>12</number>
         </property>
+        <property name="spacing">
+         <number>8</number>
+        </property>
         <item>
          <layout class="QHBoxLayout" name="canvasToolbarLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <property name="spacing">
            <number>6</number>
           </property>
@@ -281,14 +168,14 @@
            </widget>
           </item>
           <item>
-           <spacer name="canvasToolbarSpacer">
+           <spacer name="canvasSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
-            <property name="sizeHint" stdset="0">
+            <property name="sizeHint">
              <size>
               <width>8</width>
-              <height>20</height>
+              <height>8</height>
              </size>
             </property>
            </spacer>
@@ -298,8 +185,11 @@
             <property name="text">
              <string>Сетка</string>
             </property>
-            <property name="toolTip">
-             <string>Показать или скрыть координатную сетку</string>
+            <property name="role" stdset="0">
+             <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
             </property>
             <property name="checkable">
              <bool>true</bool>
@@ -307,8 +197,24 @@
             <property name="checked">
              <bool>true</bool>
             </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="loadsVisibleButton">
+            <property name="text">
+             <string>Нагрузки</string>
+            </property>
             <property name="role" stdset="0">
              <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -317,55 +223,37 @@
             <property name="text">
              <string>Вписать</string>
             </property>
-            <property name="toolTip">
-             <string>Показать конструкцию целиком</string>
-            </property>
             <property name="role" stdset="0">
              <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="zoomOutButton">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>32</height>
-             </size>
-            </property>
             <property name="text">
              <string>Меньше</string>
             </property>
-            <property name="toolTip">
-             <string>Уменьшить масштаб</string>
-            </property>
-            <property name="accessibleName">
-             <string>Уменьшить масштаб</string>
-            </property>
             <property name="role" stdset="0">
              <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QPushButton" name="zoomInButton">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>32</height>
-             </size>
-            </property>
             <property name="text">
              <string>Больше</string>
             </property>
-            <property name="toolTip">
-             <string>Увеличить масштаб</string>
-            </property>
-            <property name="accessibleName">
-             <string>Увеличить масштаб</string>
-            </property>
             <property name="role" stdset="0">
              <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
             </property>
            </widget>
           </item>
@@ -376,117 +264,94 @@
           <property name="minimumSize">
            <size>
             <width>0</width>
-            <height>180</height>
+            <height>130</height>
            </size>
           </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
-          </property>
-          <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOff</enum>
-          </property>
-          <property name="verticalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOff</enum>
-          </property>
-          <property name="renderHints">
-           <set>QPainter::Antialiasing|QPainter::TextAntialiasing</set>
-          </property>
-          <property name="dragMode">
-           <enum>QGraphicsView::DragMode::ScrollHandDrag</enum>
-          </property>
-          <property name="transformationAnchor">
-           <enum>QGraphicsView::ViewportAnchor::AnchorUnderMouse</enum>
-          </property>
-          <property name="resizeAnchor">
-           <enum>QGraphicsView::ViewportAnchor::AnchorViewCenter</enum>
-          </property>
-          <property name="accessibleName">
-           <string>Расчётная схема стержневой конструкции</string>
           </property>
          </widget>
         </item>
        </layout>
       </widget>
       <widget class="QFrame" name="dataCard">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>260</height>
-        </size>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>1</horstretch>
-         <verstretch>2</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
-       </property>
        <property name="role" stdset="0">
         <string>card</string>
        </property>
        <layout class="QVBoxLayout" name="dataLayout">
-        <property name="spacing">
-         <number>10</number>
-        </property>
         <property name="leftMargin">
-         <number>16</number>
+         <number>12</number>
         </property>
         <property name="topMargin">
-         <number>14</number>
+         <number>12</number>
         </property>
         <property name="rightMargin">
-         <number>16</number>
+         <number>12</number>
         </property>
         <property name="bottomMargin">
          <number>12</number>
         </property>
+        <property name="spacing">
+         <number>6</number>
+        </property>
         <item>
-         <layout class="QHBoxLayout" name="dataHeaderLayout">
+         <layout class="QHBoxLayout" name="dataToolbarLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <property name="spacing">
-           <number>12</number>
+           <number>6</number>
           </property>
           <item>
-           <widget class="QLabel" name="dataTitleLabel">
+           <widget class="QPushButton" name="addBarButton">
             <property name="text">
-             <string>Данные</string>
+             <string>Добавить стержень</string>
             </property>
             <property name="role" stdset="0">
-             <string>cardTitle</string>
+             <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
             </property>
            </widget>
           </item>
           <item>
-           <spacer name="dataHeaderSpacer">
+           <widget class="QPushButton" name="removeBarButton">
+            <property name="text">
+             <string>Удалить</string>
+            </property>
+            <property name="role" stdset="0">
+             <string>tool</string>
+            </property>
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="dataSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
-            <property name="sizeHint" stdset="0">
+            <property name="sizeHint">
              <size>
-              <width>20</width>
-              <height>20</height>
+              <width>8</width>
+              <height>8</height>
              </size>
             </property>
            </spacer>
           </item>
           <item>
            <widget class="QComboBox" name="numberFormatCombo">
-            <property name="minimumSize">
-             <size>
-              <width>100</width>
-              <height>34</height>
-             </size>
-            </property>
-            <property name="toolTip">
-             <string>Формат отображения чисел</string>
-            </property>
-            <property name="accessibleName">
-             <string>Формат отображения чисел</string>
-            </property>
-            <property name="currentIndex">
-             <number>1</number>
-            </property>
             <item>
              <property name="text">
               <string>Точно</string>
@@ -497,8 +362,8 @@
               <string>Кратко</string>
              </property>
             </item>
-            <property name="toolTip">
-             <string>Краткая или полная запись чисел</string>
+            <property name="currentIndex">
+             <number>1</number>
             </property>
            </widget>
           </item>
@@ -506,22 +371,19 @@
         </item>
         <item>
          <widget class="QTabWidget" name="dataTabs">
-          <property name="currentIndex">
-           <number>0</number>
-          </property>
           <property name="documentMode">
            <bool>true</bool>
           </property>
           <widget class="QWidget" name="barsTab">
            <attribute name="title">
-            <string>Стержни 3</string>
+            <string>Стержни</string>
            </attribute>
            <layout class="QVBoxLayout" name="barsLayout">
             <property name="leftMargin">
              <number>0</number>
             </property>
             <property name="topMargin">
-             <number>8</number>
+             <number>0</number>
             </property>
             <property name="rightMargin">
              <number>0</number>
@@ -529,29 +391,23 @@
             <property name="bottomMargin">
              <number>0</number>
             </property>
+            <property name="spacing">
+             <number>8</number>
+            </property>
             <item>
              <widget class="QTableWidget" name="barsTable">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
               </property>
-              <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
-              </property>
-              <property name="selectionMode">
-               <enum>QAbstractItemView::SingleSelection</enum>
-              </property>
-              <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
-              </property>
               <property name="showGrid">
                <bool>false</bool>
               </property>
-              <attribute name="verticalHeaderVisible">
-               <bool>false</bool>
-              </attribute>
-              <attribute name="horizontalHeaderStretchLastSection">
-               <bool>true</bool>
-              </attribute>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>100</height>
+               </size>
+              </property>
               <column>
                <property name="text">
                 <string>Стержень</string>
@@ -559,22 +415,27 @@
               </column>
               <column>
                <property name="text">
-                <string>Длина м</string>
+                <string>L, м</string>
                </property>
               </column>
               <column>
                <property name="text">
-                <string>Площадь м2</string>
+                <string>A, м2</string>
                </property>
               </column>
               <column>
                <property name="text">
-                <string>Модуль Па</string>
+                <string>E, Па</string>
                </property>
               </column>
               <column>
                <property name="text">
-                <string>Допуск Па</string>
+                <string>Допуск, Па</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>q, Н/м</string>
                </property>
               </column>
              </widget>
@@ -583,14 +444,14 @@
           </widget>
           <widget class="QWidget" name="nodesTab">
            <attribute name="title">
-            <string>Узлы 4</string>
+            <string>Узлы</string>
            </attribute>
            <layout class="QVBoxLayout" name="nodesLayout">
             <property name="leftMargin">
              <number>0</number>
             </property>
             <property name="topMargin">
-             <number>8</number>
+             <number>0</number>
             </property>
             <property name="rightMargin">
              <number>0</number>
@@ -598,29 +459,23 @@
             <property name="bottomMargin">
              <number>0</number>
             </property>
+            <property name="spacing">
+             <number>8</number>
+            </property>
             <item>
              <widget class="QTableWidget" name="nodesTable">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
               </property>
-              <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
-              </property>
-              <property name="selectionMode">
-               <enum>QAbstractItemView::SingleSelection</enum>
-              </property>
-              <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
-              </property>
               <property name="showGrid">
                <bool>false</bool>
               </property>
-              <attribute name="verticalHeaderVisible">
-               <bool>false</bool>
-              </attribute>
-              <attribute name="horizontalHeaderStretchLastSection">
-               <bool>true</bool>
-              </attribute>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>100</height>
+               </size>
+              </property>
               <column>
                <property name="text">
                 <string>Узел</string>
@@ -628,12 +483,17 @@
               </column>
               <column>
                <property name="text">
-                <string>Координата м</string>
+                <string>x, м</string>
                </property>
               </column>
               <column>
                <property name="text">
-                <string>Закрепление</string>
+                <string>Граничные условия</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>F, Н</string>
                </property>
               </column>
              </widget>
@@ -642,14 +502,14 @@
           </widget>
           <widget class="QWidget" name="loadsTab">
            <attribute name="title">
-            <string>Нагрузки 3</string>
+            <string>Нагрузки</string>
            </attribute>
            <layout class="QVBoxLayout" name="loadsLayout">
             <property name="leftMargin">
              <number>0</number>
             </property>
             <property name="topMargin">
-             <number>8</number>
+             <number>0</number>
             </property>
             <property name="rightMargin">
              <number>0</number>
@@ -657,29 +517,23 @@
             <property name="bottomMargin">
              <number>0</number>
             </property>
+            <property name="spacing">
+             <number>8</number>
+            </property>
             <item>
              <widget class="QTableWidget" name="loadsTable">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
               </property>
-              <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
-              </property>
-              <property name="selectionMode">
-               <enum>QAbstractItemView::SingleSelection</enum>
-              </property>
-              <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
-              </property>
               <property name="showGrid">
                <bool>false</bool>
               </property>
-              <attribute name="verticalHeaderVisible">
-               <bool>false</bool>
-              </attribute>
-              <attribute name="horizontalHeaderStretchLastSection">
-               <bool>true</bool>
-              </attribute>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>100</height>
+               </size>
+              </property>
               <column>
                <property name="text">
                 <string>Тип</string>
@@ -710,287 +564,592 @@
       </widget>
      </widget>
      <widget class="QFrame" name="inspectorCard">
-      <property name="minimumSize">
-       <size>
-        <width>250</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>290</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
-      </property>
       <property name="role" stdset="0">
        <string>inspector</string>
       </property>
+      <property name="minimumSize">
+       <size>
+        <width>230</width>
+        <height>0</height>
+       </size>
+      </property>
       <layout class="QVBoxLayout" name="inspectorLayout">
+       <property name="leftMargin">
+        <number>12</number>
+       </property>
+       <property name="topMargin">
+        <number>12</number>
+       </property>
+       <property name="rightMargin">
+        <number>12</number>
+       </property>
+       <property name="bottomMargin">
+        <number>12</number>
+       </property>
        <property name="spacing">
         <number>8</number>
        </property>
-       <property name="leftMargin">
-        <number>18</number>
-       </property>
-       <property name="topMargin">
-        <number>16</number>
-       </property>
-       <property name="rightMargin">
-        <number>18</number>
-       </property>
-       <property name="bottomMargin">
-        <number>14</number>
-       </property>
        <item>
-        <widget class="QLabel" name="selectedBarLabel">
-         <property name="text">
-          <string>Стержень 02</string>
+        <widget class="QTabWidget" name="inspectorTabs">
+         <property name="documentMode">
+          <bool>true</bool>
          </property>
-         <property name="role" stdset="0">
-          <string>cardTitle</string>
-         </property>
+         <widget class="QWidget" name="barEditorTab">
+          <attribute name="title">
+           <string>Стержень</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="barEditorLayout">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="selectedBarLabel">
+             <property name="text">
+              <string>Стержень</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>cardTitle</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QGridLayout" name="propertiesLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QWidget" name="lengthField">
+               <layout class="QVBoxLayout" name="lengthLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="lengthLabel">
+                  <property name="text">
+                   <string>L, м</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>lengthInput</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="lengthInput">
+                  <property name="toolTip">
+                   <string>Длина в метрах</string>
+                  </property>
+                  <property name="maxLength">
+                   <number>4096</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QWidget" name="areaField">
+               <layout class="QVBoxLayout" name="areaLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="areaLabel">
+                  <property name="text">
+                   <string>A, м2</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>areaInput</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="areaInput">
+                  <property name="toolTip">
+                   <string>Площадь сечения в квадратных метрах</string>
+                  </property>
+                  <property name="maxLength">
+                   <number>4096</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QWidget" name="modulusField">
+               <layout class="QVBoxLayout" name="modulusLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="modulusLabel">
+                  <property name="text">
+                   <string>E, Па</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>modulusInput</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="modulusInput">
+                  <property name="toolTip">
+                   <string>Модуль упругости в паскалях</string>
+                  </property>
+                  <property name="maxLength">
+                   <number>4096</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QWidget" name="stressField">
+               <layout class="QVBoxLayout" name="stressLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="stressLabel">
+                  <property name="text">
+                   <string>Допуск, Па</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>stressInput</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="stressInput">
+                  <property name="toolTip">
+                   <string>Допускаемое напряжение в паскалях</string>
+                  </property>
+                  <property name="maxLength">
+                   <number>4096</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="barActionsLayout">
+             <item>
+              <widget class="QPushButton" name="applyBarButton">
+               <property name="text">
+                <string>Применить</string>
+               </property>
+               <property name="role" stdset="0">
+                <string>primary</string>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="cancelBarButton">
+               <property name="text">
+                <string>Отменить</string>
+               </property>
+               <property name="role" stdset="0">
+                <string>secondary</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="barBottomSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint">
+              <size>
+               <width>8</width>
+               <height>8</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="loadEditorTab">
+          <attribute name="title">
+           <string>Нагрузка</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="loadEditorLayout">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <item>
+            <layout class="QGridLayout" name="loadFieldsLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <property name="spacing">
+              <number>8</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QWidget" name="loadKindField">
+               <layout class="QVBoxLayout" name="loadKindLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="loadKindLabel">
+                  <property name="text">
+                   <string>Тип</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="loadKindCombo">
+                  <item>
+                   <property name="text">
+                    <string>F</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>q</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QWidget" name="loadElementField">
+               <layout class="QVBoxLayout" name="loadElementLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="loadElementLabel">
+                  <property name="text">
+                   <string>Элемент</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="loadElementCombo" />
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QWidget" name="loadValueField">
+               <layout class="QVBoxLayout" name="loadValueLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="loadValueLabel">
+                  <property name="text">
+                   <string>Значение</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="loadValueInput">
+                  <property name="text">
+                   <string>0</string>
+                  </property>
+                  <property name="maxLength">
+                   <number>4096</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="loadActionsLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <property name="spacing">
+              <number>6</number>
+             </property>
+             <item>
+              <widget class="QPushButton" name="applyLoadButton">
+               <property name="text">
+                <string>Применить</string>
+               </property>
+               <property name="role" stdset="0">
+                <string>primary</string>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="removeLoadButton">
+               <property name="text">
+                <string>Удалить</string>
+               </property>
+               <property name="role" stdset="0">
+                <string>secondary</string>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="loadBottomSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint">
+              <size>
+               <width>8</width>
+               <height>8</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="supportsTab">
+          <attribute name="title">
+           <string>Условия</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="supportsLayout">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <property name="spacing">
+            <number>12</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="boundaryTitleLabel">
+             <property name="text">
+              <string>Граничные условия</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>cardTitle</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="supportNodeCombo">
+             <property name="accessibleName">
+              <string>Узел граничных условий</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="fixedSupportCheck">
+             <property name="text">
+              <string>Жёсткая опора</string>
+             </property>
+             <property name="toolTip">
+              <string>Нулевые кинематические граничные условия запрещают перемещения и повороты узла во всех направлениях</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="nodesButton">
+             <property name="text">
+              <string>Все узлы</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="supportBottomSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint">
+              <size>
+               <width>8</width>
+               <height>8</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
         </widget>
-       </item>
-       <item>
-        <widget class="QFrame" name="propertiesDivider">
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Plain</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QGridLayout" name="propertiesLayout">
-         <property name="horizontalSpacing">
-          <number>8</number>
-         </property>
-         <property name="verticalSpacing">
-          <number>4</number>
-         </property>
-         <item row="0" column="0">
-          <widget class="QLabel" name="lengthLabel">
-           <property name="text">
-            <string>Длина L</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-           <property name="buddy">
-            <cstring>lengthInput</cstring>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="lengthUnitLabel">
-           <property name="text">
-            <string>м</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignVCenter</set>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0" colspan="2">
-          <widget class="QLineEdit" name="lengthInput">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>34</height>
-            </size>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>3</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="areaLabel">
-           <property name="text">
-            <string>Площадь A</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-           <property name="buddy">
-            <cstring>areaInput</cstring>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLabel" name="areaUnitLabel">
-           <property name="text">
-            <string>м2</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignVCenter</set>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0" colspan="2">
-          <widget class="QLineEdit" name="areaInput">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>34</height>
-            </size>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>0.0014</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
-          <widget class="QLabel" name="modulusLabel">
-           <property name="text">
-            <string>Модуль E</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-           <property name="buddy">
-            <cstring>modulusInput</cstring>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="1">
-          <widget class="QLabel" name="modulusUnitLabel">
-           <property name="text">
-            <string>Па</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignVCenter</set>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="0" colspan="2">
-          <widget class="QLineEdit" name="modulusInput">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>34</height>
-            </size>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>2.1e11</string>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="0">
-          <widget class="QLabel" name="stressLabel">
-           <property name="text">
-            <string>Допустимое напряжение</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-           <property name="buddy">
-            <cstring>stressInput</cstring>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="1">
-          <widget class="QLabel" name="stressUnitLabel">
-           <property name="text">
-            <string>Па</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignVCenter</set>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item row="7" column="0" colspan="2">
-          <widget class="QLineEdit" name="stressInput">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>34</height>
-            </size>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>1.6e8</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QFrame" name="materialDivider">
-         <property name="frameShape">
-          <enum>QFrame::HLine</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Plain</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="materialLayout">
-         <property name="spacing">
-          <number>5</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="materialCaptionLabel">
-           <property name="text">
-            <string>Материал</string>
-           </property>
-           <property name="role" stdset="0">
-            <string>muted</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="materialNameLabel">
-           <property name="text">
-            <string>Сталь</string>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <spacer name="inspectorSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>8</height>
-          </size>
-         </property>
-        </spacer>
        </item>
       </layout>
      </widget>
@@ -998,27 +1157,6 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>constructionButton</tabstop>
-  <tabstop>loadsButton</tabstop>
-  <tabstop>dataButton</tabstop>
-  <tabstop>tablesButton</tabstop>
-  <tabstop>saveProjectButton</tabstop>
-  <tabstop>gridButton</tabstop>
-  <tabstop>fitButton</tabstop>
-  <tabstop>zoomOutButton</tabstop>
-  <tabstop>zoomInButton</tabstop>
-  <tabstop>structureView</tabstop>
-  <tabstop>numberFormatCombo</tabstop>
-  <tabstop>dataTabs</tabstop>
-  <tabstop>barsTable</tabstop>
-  <tabstop>nodesTable</tabstop>
-  <tabstop>loadsTable</tabstop>
-  <tabstop>lengthInput</tabstop>
-  <tabstop>areaInput</tabstop>
-  <tabstop>modulusInput</tabstop>
-  <tabstop>stressInput</tabstop>
- </tabstops>
  <resources />
  <connections />
 </ui>

@@ -1,61 +1,110 @@
-'''Предоставляет диалог проектов текущего демонстрационного сеанса.'''
+'''Запрашивает название и расположение нового проекта.'''
 
-from PyQt6.QtCore import QRegularExpression
+import os
+from pathlib import Path
+
+from PyQt6.QtCore import QRegularExpression, QStandardPaths
 from PyQt6.QtGui import QRegularExpressionValidator
-from PyQt6.QtWidgets import QDialog, QWidget
+from PyQt6.QtWidgets import QDialog, QFileDialog, QWidget
 
+from ..storage import Project, ProjectStore
 from .loader import load_form
 
 
 class ProjectDialog(QDialog):
-    '''Запрашивает имя нового проекта или выбор проекта из списка.
+    '''Настраивает создание отдельной папки проекта.
 
     Args:
-        project_names: Имена проектов текущего сеанса.
-        create: Признак режима создания проекта.
+        directory: Исходная родительская папка проектов.
         parent: Родительское окно.
+        store: Хранилище для создания файлов проекта.
     '''
 
-    def __init__(self, project_names: list[str], create: bool, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, directory: Path | None = None, parent: QWidget | None = None,
+        *, store: ProjectStore | None = None,
+    ) -> None:
         super().__init__(parent)
         load_form('project_dialog.ui', self)
-        self._create = create
-        self.setWindowTitle('Создать проект' if create else 'Выбрать проект')
-        self.titleLabel.setText(self.windowTitle())
-        self.descriptionLabel.setText('Стержневая система на растяжение и сжатие')
-        self.modeStack.setCurrentWidget(self.createPage if create else self.openPage)
-        self.continueButton.setText('Создать проект' if create else 'Открыть проект')
-        self.projectList.addItems(project_names)
-        if project_names:
-            self.projectList.setCurrentRow(0)
+        self._store = store if store is not None else ProjectStore()
+        self.project: Project | None = None
+        self.errorLabel.hide()
+        default_directory = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation))
+        if not default_directory.is_dir():
+            default_directory = Path.home()
+        self.directoryInput.setText(str(directory or default_directory))
         self.nameInput.setValidator(QRegularExpressionValidator(QRegularExpression(r'[\p{L}\p{N} -]{1,60}'), self))
-        next_name = 'Новый проект'
-        number = 2
-        while next_name in project_names:
-            next_name = f'Новый проект {number}'
-            number += 1
-        self.nameInput.setText(next_name)
+        self.nameInput.setText('Новый проект')
         self.nameInput.selectAll()
+        self.browseButton.clicked.connect(self._choose_directory)
         self.nameInput.textChanged.connect(self._update_button)
-        self.projectList.currentRowChanged.connect(self._update_button)
-        self.projectList.itemDoubleClicked.connect(lambda _: self.accept())
+        self.directoryInput.textChanged.connect(self._update_button)
         self.cancelButton.clicked.connect(self.reject)
         self.continueButton.clicked.connect(self.accept)
         self._update_button()
 
+    def _choose_directory(self) -> None:
+        '''Открывает выбор родительской папки для проекта.'''
+        try:
+            initial = self.project_directory()
+            while not initial.exists() and initial.parent != initial:
+                initial = initial.parent
+        except (OSError, ValueError):
+            initial = Path.home()
+        directory = QFileDialog.getExistingDirectory(self, 'Расположение проекта', str(initial))
+        if directory:
+            self.directoryInput.setText(directory)
+
     def _update_button(self) -> None:
-        '''Разрешает продолжение только при корректном выборе.'''
-        valid = bool(self.nameInput.text().strip()) if self._create else self.projectList.currentItem() is not None
+        '''Показывает итоговую папку и проверяет наличие имени и пути.'''
+        self.errorLabel.hide()
+        valid = self.nameInput.hasAcceptableInput() and bool(self.project_name()) and bool(self.directoryInput.text().strip())
+        try:
+            target = self.project_directory() / self.project_name() if valid else None
+            self.targetPathLabel.setText(str(target) if target is not None else '')
+        except (OSError, ValueError):
+            valid = False
+            self.targetPathLabel.clear()
+            self._show_error('Укажите корректный путь к папке')
         self.continueButton.setEnabled(valid)
 
+    def accept(self) -> None:
+        '''Создаёт проект и закрывает диалог только после успешной записи.'''
+        if not self.continueButton.isEnabled():
+            return
+        try:
+            self.project = self._store.create(self.project_directory(), self.project_name())
+        except (OSError, ValueError) as error:
+            self._show_error(str(error))
+            return
+        super().accept()
+
+    def _show_error(self, text: str) -> None:
+        '''Оставляет описание ошибки рядом с введёнными параметрами.
+
+        Args:
+            text: Причина отказа при выборе пути или создании проекта.
+        '''
+        self.errorLabel.setText(text)
+        self.errorLabel.show()
+
     def project_name(self) -> str:
-        '''Возвращает имя выбранного рабочего пространства.
+        '''Возвращает название нового проекта.
 
         Returns:
-            Имя нового или выбранного проекта.
+            Название без пробелов по краям.
         '''
-        if self._create:
-            return self.nameInput.text().strip()
-        selected = self.projectList.currentItem()
-        return selected.text() if selected is not None else ''
+        return self.nameInput.text().strip()
 
+    def project_directory(self) -> Path:
+        '''Возвращает родительскую папку проекта.
+
+        Returns:
+            Абсолютный путь к выбранному каталогу.
+        '''
+        text = self.directoryInput.text().strip()
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
+            text = text[1:-1].strip()
+        if not text or '\x00' in text:
+            raise ValueError('Укажите путь к папке')
+        return Path(os.path.expandvars(text)).expanduser().absolute()

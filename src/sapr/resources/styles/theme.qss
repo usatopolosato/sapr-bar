@@ -3,7 +3,7 @@ QWidget {
     font-family: "Segoe UI";
     font-size: 13px;
 }
-QMainWindow, #centralWidget, QStackedWidget {
+QMainWindow, #centralWidget, QStackedWidget, QWidget[role="page"] {
     background: ${window};
 }
 QLabel {
@@ -54,6 +54,7 @@ QLabel[role="muted"] {
     color: ${muted};
     font-size: 12px;
 }
+QLabel[role="error"] { color: ${force}; }
 QLabel[role="author"] {
     color: ${muted};
     font-size: 11px;
@@ -223,19 +224,20 @@ QComboBox { padding: 5px 10px; min-height: 18px; }
 QComboBox::drop-down { border: none; width: 18px; }
 QComboBox QAbstractItemView { background: ${surface}; selection-background-color: ${selection}; border: 1px solid ${border}; }
 
-QToolButton#themeButton {
+QToolButton#themeButton, QToolButton#sectionButton {
     background: transparent;
     border: 1px solid ${border};
     border-radius: 5px;
     color: ${muted};
     padding: 7px 13px;
 }
-QToolButton#themeButton:hover, QToolButton#themeButton:pressed {
+QToolButton#themeButton:hover, QToolButton#themeButton:pressed, QToolButton#sectionButton:hover, QToolButton#sectionButton:pressed {
     background: ${hover};
     color: ${text};
 }
-QToolButton#themeButton:focus { border-color: ${accent}; }
-QToolButton#themeButton::menu-indicator { image: none; width: 0; }
+QToolButton#themeButton:focus, QToolButton#sectionButton:focus { border-color: ${accent}; }
+QToolButton#themeButton::menu-indicator, QToolButton#sectionButton::menu-indicator { image: none; width: 0; }
+QScrollArea { border: none; background: ${window}; }
 QMenu {
     background: ${panel};
     border: 1px solid ${border};

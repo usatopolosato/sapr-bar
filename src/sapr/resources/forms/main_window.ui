@@ -12,8 +12,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>1100</width>
-    <height>760</height>
+    <width>800</width>
+    <height>600</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -89,6 +89,16 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item>
+        <widget class="QToolButton" name="sectionButton">
+         <property name="text">
+          <string>Разделы</string>
+         </property>
+         <property name="toolTip">
+          <string>Разделы проекта</string>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QToolButton" name="themeButton">

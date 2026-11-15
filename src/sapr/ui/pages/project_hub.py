@@ -1,7 +1,7 @@
 '''Предоставляет страницу выбора модуля проекта.'''
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QBoxLayout, QWidget
 
 from ..loader import load_form
 
@@ -33,4 +33,18 @@ class ProjectHubPage(QWidget):
             name: Название рабочего пространства.
         '''
         self.projectNameLabel.setText(name)
+
+    def resizeEvent(self, event) -> None:
+        '''Перестраивает карточки модулей для узкого окна.
+
+        Args:
+            event: Событие изменения размера страницы.
+        '''
+        compact = self.width() < 760
+        self.moduleCardsLayout.setDirection(QBoxLayout.Direction.TopToBottom if compact else QBoxLayout.Direction.LeftToRight)
+        margin = 18 if self.width() < 1000 else 32
+        self.hubLayout.setContentsMargins(margin, margin, margin, margin)
+        for card in (self.preprocessorCard, self.processorCard, self.postprocessorCard):
+            card.setMinimumHeight(180 if compact else 240)
+        super().resizeEvent(event)
 

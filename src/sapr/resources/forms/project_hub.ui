@@ -122,8 +122,8 @@
       <widget class="QFrame" name="preprocessorCard">
        <property name="minimumSize">
         <size>
-         <width>240</width>
-         <height>340</height>
+         <width>210</width>
+         <height>240</height>
         </size>
        </property>
        <property name="role" stdset="0">
@@ -253,8 +253,8 @@
       <widget class="QFrame" name="processorCard">
        <property name="minimumSize">
         <size>
-         <width>240</width>
-         <height>340</height>
+         <width>210</width>
+         <height>240</height>
         </size>
        </property>
        <property name="role" stdset="0">
@@ -384,8 +384,8 @@
       <widget class="QFrame" name="postprocessorCard">
        <property name="minimumSize">
         <size>
-         <width>240</width>
-         <height>340</height>
+         <width>210</width>
+         <height>240</height>
         </size>
        </property>
        <property name="role" stdset="0">

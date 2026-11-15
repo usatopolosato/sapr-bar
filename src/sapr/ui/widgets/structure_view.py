@@ -1,4 +1,4 @@
-'''Отрисовывает интерактивную демонстрационную стержневую систему.'''
+'''Отрисовывает расчётную схему из исходных данных в системе СИ.'''
 
 from math import ceil, floor
 from decimal import Decimal
@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ..preview_data import PREVIEW_BARS, PREVIEW_LOADS
+from ...domain import StructuralModel, demo_model
 from ..formatting import format_quantity
 from ..theme import DARK_COLORS, ThemeColors
 
@@ -23,7 +23,7 @@ class BarItem(QGraphicsRectItem):
 
     Args:
         rect: Границы изображения стержня.
-        index: Индекс стержня в демонстрационном наборе.
+        index: Индекс стержня в модели.
         colors: Цвета текущей темы интерфейса.
     '''
 
@@ -88,6 +88,7 @@ class StructureView(QGraphicsView):
     def __init__(self, parent: QWidget | None = None, compact: bool = False) -> None:
         super().__init__(parent)
         self._compact = compact
+        self._model = demo_model() if compact else StructuralModel()
         self._grid_visible = True
         self._loads_visible = not compact
         self._zoom = 1.0
@@ -106,12 +107,32 @@ class StructureView(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QColor(self._colors.canvas))
         self.setAccessibleName('Интерактивная схема стержневой конструкции')
-        self.setAccessibleDescription('Три стержня - выбор также доступен в таблице стержней')
+        self.setAccessibleDescription('Выбор стержня также доступен в таблице')
         self.setScene(QGraphicsScene(self))
-        self.scene().setSceneRect(0, 0, 900, 290)
+        self.scene().setSceneRect(0, 0, 900, 310)
         self._build_scene()
         self.scene().selectionChanged.connect(self._selection_changed)
         self.select_bar(1)
+
+    def set_model(self, model: StructuralModel) -> None:
+        '''Обновляет схему по текущим исходным данным.
+
+        Args:
+            model: Стержни, нагрузки и опоры в системе СИ.
+        '''
+        selected = next((index for index, bar in enumerate(self._bars) if bar.isSelected()), 0)
+        self._model = model
+        self.scene().blockSignals(True)
+        self.scene().clear()
+        self._bars.clear()
+        self._load_items.clear()
+        self._quantity_labels.clear()
+        self._theme_bindings.clear()
+        self._build_scene()
+        if self._bars:
+            self._bars[min(selected, len(self._bars) - 1)].setSelected(True)
+        self.scene().blockSignals(False)
+        self.fit_model()
 
     @classmethod
     def replace(cls, original: QGraphicsView, compact: bool = False) -> 'StructureView':
@@ -193,45 +214,117 @@ class StructureView(QGraphicsView):
         return [line, triangle]
 
     def _build_scene(self) -> None:
-        '''Формирует демонстрационную схему без выполнения расчётов.'''
-        axis = self._line(60, 150, 845, 150, 'axis')
+        '''Формирует геометрию и обозначения текущей расчётной модели.'''
+        if not self._model.bars:
+            self._text(100, 135, 'Добавьте стержень', 'muted', 12)
+            return
+        positions, heights = self._geometry()
+        axis = self._line(positions[0] - 45, 150, positions[-1] + 115, 150, 'axis')
         pen = axis.pen()
         pen.setStyle(Qt.PenStyle.DashLine)
         axis.setPen(pen)
-        self._text(846, 136, 'x', 'muted')
-        positions = [100.0]
-        total_length = sum((bar.length_m for bar in PREVIEW_BARS), Decimal('0'))
-        for bar in PREVIEW_BARS:
-            positions.append(positions[-1] + float(bar.length_m / total_length * Decimal('640')))
-        heights = [44, 64, 50]
+        self._text(positions[-1] + 120, 136, 'x', 'muted')
         for index, (left, right, height) in enumerate(zip(positions, positions[1:], heights)):
             bar = BarItem(QRectF(left, 150 - height / 2, right - left, height), index, self._colors)
             self.scene().addItem(bar)
             self._bars.append(bar)
-            self._line(left, 190, left, 218, 'dimension')
-            self._line(right, 190, right, 218, 'dimension')
-            self._line(left, 210, right, 210, 'dimension')
-            self._line(left - 4, 215, left + 4, 205, 'dimension')
-            self._line(right - 4, 215, right + 4, 205, 'dimension')
-            self._quantity_text(0, 222, PREVIEW_BARS[index].length_m, 'м', center=(left + right) / 2)
-        self._line(98, 108, 98, 192, 'bar_border', 3)
-        for y in range(116, 201, 12):
-            self._line(81, y, 98, y - 12, 'dimension', 1.4)
+            self._line(left, 250, right, 250, 'dimension')
+            self._quantity_text(0, 260, self._model.bars[index].length_m, 'м', 'L', center=(left + right) / 2)
         for index, x in enumerate(positions):
-            self._line(x, 101, x, 114, 'dimension')
-            node = self.scene().addEllipse(x - 13, 75, 26, 26, QPen(QColor(self._colors.node_border)), QColor(self._colors.node_fill))
+            self._line(x, 230, x, 258, 'dimension')
+            tick = self._line(x - 4, 255, x + 4, 245, 'dimension')
+            tick.setData(0, 'dimension_tick')
+            adjacent = heights[max(0, index - 1):min(len(heights), index + 1)]
+            top = 150 - max(adjacent) / 2
+            self._line(x, 98, x, top - 4, 'dimension')
+            node = self.scene().addEllipse(x - 13, 72, 26, 26, QPen(QColor(self._colors.node_border)), QColor(self._colors.node_fill))
             self._theme_bindings.extend([(node, 'pen', 'node_border'), (node, 'brush', 'node_fill')])
-            label = self._text(x - 5, 75, str(index + 1), 'text', 10)
+            label = self._text(0, 72, str(index + 1), 'text', 10)
+            label.setX(x - label.boundingRect().width() / 2)
             label.setZValue(1)
+            if index < len(self._model.supports) and self._model.supports[index]:
+                self._support(x, max(adjacent), index == len(positions) - 1)
         if not self._compact:
-            self._load_items.extend(self._arrow(positions[1] - 3, positions[1] - 92, 150, 'force'))
-            self._load_items.extend(self._arrow(positions[-1] + 6, positions[-1] + 95, 150, 'force'))
-            self._load_items.append(self._quantity_text(positions[1] - 88, 180, PREVIEW_LOADS[0].value_si, 'Н', 'F', 'force'))
-            self._load_items.append(self._quantity_text(positions[-1] + 9, 180, PREVIEW_LOADS[1].value_si, 'Н', 'F', 'force'))
-            for x in range(int(positions[1]) + 9, int(positions[2]) - 20, 40):
-                self._load_items.extend(self._arrow(x, x + 28, 50, 'distributed'))
-            self._load_items.append(self._quantity_text(positions[1] + 60, 15, PREVIEW_LOADS[2].value_si, 'Н на м', 'q', 'distributed'))
-        self._quantity_text(100, 258, total_length, 'м', 'L')
+            self._draw_loads(positions)
+        for item in self._load_items:
+            item.setVisible(self._loads_visible)
+
+    def _geometry(self) -> tuple[list[float], list[float]]:
+        '''Вычисляет размеры изображения без изменения физических величин.
+
+        Returns:
+            Координаты узлов и высоты стержней в координатах сцены.
+        '''
+        bars = self._model.bars
+        total = self._model.total_length_m
+        maximum_area = max(bar.area_m2 for bar in bars)
+        target_width = max(640, len(bars) * 135)
+        positions = [100.0]
+        heights = []
+        conditional_scale = False
+        for bar in bars:
+            ratio = min(Decimal('1'), max(Decimal('0'), bar.length_m / total)) if total > 0 else Decimal('0')
+            width = float(ratio) * target_width
+            height = float(bar.area_m2 / maximum_area) * 72 if maximum_area > 0 else 32
+            conditional_scale = conditional_scale or width < 120 or height < 18
+            positions.append(positions[-1] + max(120, width))
+            heights.append(max(18, height))
+        self.setToolTip('Масштаб схемы условный' if conditional_scale else '')
+        return positions, heights
+
+    def _support(self, x: float, height: float, closing: bool) -> None:
+        '''Рисует заделку с одинаковым наклоном всех штрихов.
+
+        Args:
+            x: Координата закреплённого узла.
+            height: Высота соседнего стержня.
+            closing: Признак правой концевой заделки.
+        '''
+        top = 150 - height / 2 - 12
+        bottom = 150 + height / 2 + 12
+        edge = self._line(x, top, x, bottom, 'bar_border', 3)
+        edge.setZValue(2)
+        for y in range(ceil(top + 12), floor(bottom) + 1, 12):
+            if closing:
+                hatch = self._line(x, y, x + 17, y - 12, 'dimension', 1.4)
+            else:
+                hatch = self._line(x - 17, y, x, y - 12, 'dimension', 1.4)
+            hatch.setData(0, 'support_hatch')
+            hatch.setZValue(2)
+
+    def _draw_loads(self, positions: list[float]) -> None:
+        '''Добавляет направленные узловые и погонные нагрузки.
+
+        Args:
+            positions: Горизонтальные координаты узлов схемы.
+        '''
+        for index, (position, value) in enumerate(zip(positions, self._model.nodal_forces)):
+            if not value:
+                continue
+            direction = 1 if value > 0 else -1
+            neighbour = index if direction > 0 else index - 1
+            available = positions[neighbour + 1] - positions[neighbour] if 0 <= neighbour < len(positions) - 1 else 180
+            length = min(78, available * 0.36)
+            start = position + direction * 5
+            end = start + direction * length
+            self._load_items.extend(self._arrow(start, end, 150, 'force'))
+            self._load_items.append(self._quantity_text(
+                0, 192 + 20 * (index % 2), value, 'Н', 'F', 'force', center=(start + end) / 2,
+            ))
+        for left, right, value in zip(positions, positions[1:], self._model.distributed_loads):
+            if not value:
+                continue
+            count = max(2, int((right - left) / 42))
+            step = (right - left - 20) / count
+            for index in range(count):
+                start = left + 10 + index * step
+                end = start + min(28, step - 7)
+                if value < 0:
+                    start, end = end, start
+                self._load_items.extend(self._arrow(start, end, 44, 'distributed'))
+            self._load_items.append(self._quantity_text(
+                0, 10, value, 'Н/м', 'q', 'distributed', center=(left + right) / 2,
+            ))
 
     def _quantity_text(self, x: float, y: float, value: Decimal, unit: str, prefix: str = '', color: str = 'muted', center: float | None = None):
         '''Добавляет подпись физической величины в СИ.
@@ -248,7 +341,7 @@ class StructureView(QGraphicsView):
         Returns:
             Созданная подпись величины.
         '''
-        text = f'{prefix} {format_quantity(value, self._compact_numbers)} {unit}'.strip()
+        text = f'{prefix} = {format_quantity(value, self._compact_numbers)} {unit}'
         item = self._text(x, y, text, color, 10)
         self._quantity_labels.append((item, prefix, value, unit, center))
         if center is not None:
@@ -263,9 +356,10 @@ class StructureView(QGraphicsView):
         '''
         self._compact_numbers = compact
         for item, prefix, value, unit, center in self._quantity_labels:
-            item.setText(f'{prefix} {format_quantity(value, compact)} {unit}'.strip())
+            item.setText(f'{prefix} = {format_quantity(value, compact)} {unit}')
             if center is not None:
                 item.setX(center - item.boundingRect().width() / 2)
+        self.fit_model()
 
     def set_theme(self, colors: ThemeColors) -> None:
         '''Применяет палитру к схеме без изменения масштаба и выбора.
@@ -292,7 +386,7 @@ class StructureView(QGraphicsView):
         '''Выделяет стержень по индексу.
 
         Args:
-            index: Индекс существующего демонстрационного стержня.
+            index: Индекс существующего стержня.
         '''
         if not 0 <= index < len(self._bars):
             return
@@ -320,7 +414,7 @@ class StructureView(QGraphicsView):
         self.viewport().update()
 
     def set_loads_visible(self, visible: bool) -> None:
-        '''Меняет видимость демонстрационных нагрузок.
+        '''Меняет видимость обозначений нагрузок.
 
         Args:
             visible: Требуемое состояние изображения нагрузок.
@@ -332,7 +426,15 @@ class StructureView(QGraphicsView):
 
     def fit_model(self) -> None:
         '''Вписывает модель в доступный размер графического вида.'''
-        bounds = QRectF(55, 8, 815, 270) if self._loads_visible else QRectF(55, 68, 815, 210)
+        if not self._bars:
+            bounds = QRectF(50, 65, 440, 180)
+        else:
+            bounds = QRectF()
+            for item in self.scene().items():
+                if item.isVisible():
+                    bounds = bounds.united(item.sceneBoundingRect())
+            bounds = bounds.adjusted(-22, -18, 22, 18)
+        self.scene().setSceneRect(bounds)
         self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
         self._zoom = 1.0
 
@@ -343,7 +445,7 @@ class StructureView(QGraphicsView):
             factor: Множитель текущего масштаба.
         '''
         next_zoom = self._zoom * factor
-        if 0.55 <= next_zoom <= 3.5:
+        if 0.55 <= next_zoom <= 24:
             self.scale(factor, factor)
             self._zoom = next_zoom
 
@@ -363,7 +465,10 @@ class StructureView(QGraphicsView):
             event: Событие изменения геометрии виджета.
         '''
         super().resizeEvent(event)
+        zoom = self._zoom
         self.fit_model()
+        if zoom != 1.0:
+            self.zoom_by(zoom)
 
     def showEvent(self, event) -> None:
         '''Обновляет масштаб после первого отображения страницы.
@@ -385,7 +490,8 @@ class StructureView(QGraphicsView):
         if not self._grid_visible:
             return
         painter.setPen(QPen(QColor(self._colors.grid), 0.6))
-        step = 28
+        scale = max(self.transform().m11(), 0.0001)
+        step = max(28, ceil(18 / scale / 28) * 28)
         for x in range(floor(rect.left() / step) * step, ceil(rect.right()), step):
             for y in range(floor(rect.top() / step) * step, ceil(rect.bottom()), step):
                 painter.drawPoint(QPointF(x, y))
