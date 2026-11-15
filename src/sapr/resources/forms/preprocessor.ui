@@ -1093,38 +1093,128 @@
             <number>12</number>
            </property>
            <item>
-            <widget class="QLabel" name="boundaryTitleLabel">
-             <property name="text">
-              <string>Граничные условия</string>
+            <layout class="QGridLayout" name="boundaryFieldsLayout">
+             <property name="spacing">
+              <number>12</number>
              </property>
-             <property name="role" stdset="0">
-              <string>cardTitle</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="supportNodeCombo">
-             <property name="accessibleName">
-              <string>Узел граничных условий</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="fixedSupportCheck">
-             <property name="text">
-              <string>Жёсткая опора</string>
-             </property>
-             <property name="toolTip">
-              <string>Нулевые кинематические граничные условия запрещают перемещения и повороты узла во всех направлениях</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="nodesButton">
-             <property name="text">
-              <string>Все узлы</string>
-             </property>
-            </widget>
+             <item row="0" column="0">
+              <widget class="QWidget" name="supportNodeField">
+               <layout class="QVBoxLayout" name="supportNodeLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="supportNodeLabel">
+                  <property name="text">
+                   <string>Узел</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                  <property name="buddy">
+                   <cstring>supportNodeCombo</cstring>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="supportNodeCombo">
+                  <property name="accessibleName">
+                   <string>Узел граничных условий</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QWidget" name="supportStateField">
+               <layout class="QVBoxLayout" name="supportStateLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="supportStateLabel">
+                  <property name="text">
+                   <string>Закрепление</string>
+                  </property>
+                  <property name="role" stdset="0">
+                   <string>muted</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="supportButtonsLayout" stretch="1,1">
+                  <property name="spacing">
+                   <number>6</number>
+                  </property>
+                  <item>
+                   <widget class="QPushButton" name="freeSupportButton">
+                    <property name="text">
+                     <string>Свободен</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>tool</string>
+                    </property>
+                    <property name="cursor">
+                     <cursorShape>PointingHandCursor</cursorShape>
+                    </property>
+                    <property name="checkable">
+                     <bool>true</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>Перемещение узла не ограничено</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="fixedSupportButton">
+                    <property name="text">
+                     <string>Закреплён</string>
+                    </property>
+                    <property name="role" stdset="0">
+                     <string>tool</string>
+                    </property>
+                    <property name="cursor">
+                     <cursorShape>PointingHandCursor</cursorShape>
+                    </property>
+                    <property name="checkable">
+                     <bool>true</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>Нулевые кинематические граничные условия - жёсткая опора</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
             <spacer name="supportBottomSpacer">

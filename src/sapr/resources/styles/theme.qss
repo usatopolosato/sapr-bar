@@ -159,6 +159,7 @@ QGraphicsView {
 QSplitter::handle { background: transparent; }
 QSplitter::handle:hover { background: ${accent}; }
 QTabWidget::pane { border: none; background: transparent; }
+#inspectorTabs QStackedWidget { background: transparent; }
 QTabBar::tab {
     color: ${muted};
     background: transparent;

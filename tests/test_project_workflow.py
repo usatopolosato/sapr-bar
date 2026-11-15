@@ -68,7 +68,7 @@ class ProjectWorkflowTests(unittest.TestCase):
     def test_save_invalid_model_retains_draft_without_prepared_files(self) -> None:
         '''Проверяет сохранение модели без опор и отзыв старой подготовки.'''
         self.page.supportNodeCombo.setCurrentIndex(0)
-        self.page.fixedSupportCheck.setChecked(False)
+        self.page.freeSupportButton.click()
         self.assertTrue(self.window._dirty)
         self.assertTrue(self.window.save_project())
         reopened = self.store.load(self.project.path)
@@ -117,7 +117,7 @@ class ProjectWorkflowTests(unittest.TestCase):
     def test_failed_write_preserves_unsaved_state(self) -> None:
         '''Проверяет сохранность редактирования при ошибке записи на диск.'''
         self.page.supportNodeCombo.setCurrentIndex(len(self.page.model.supports) - 1)
-        self.page.fixedSupportCheck.setChecked(True)
+        self.page.fixedSupportButton.click()
         with patch.object(self.window._store, 'save', side_effect=PermissionError('Нет доступа')):
             with patch.object(self.window, '_show_error') as notice:
                 self.assertFalse(self.window.save_project())
@@ -129,7 +129,7 @@ class ProjectWorkflowTests(unittest.TestCase):
     def test_cancel_leaves_modified_project_open(self) -> None:
         '''Проверяет отмену закрытия без потери изменённой модели.'''
         self.page.supportNodeCombo.setCurrentIndex(len(self.page.model.supports) - 1)
-        self.page.fixedSupportCheck.setChecked(True)
+        self.page.fixedSupportButton.click()
         QTimer.singleShot(0, lambda: self._choose_message_button('Отмена'))
         self.assertFalse(self.window._confirm_project_change())
         self.assertTrue(self.window._dirty)

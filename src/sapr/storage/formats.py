@@ -1,8 +1,9 @@
 '''Преобразует осевую модель во внешние массивы CN и LD.
 
-Структура массивов следует лекции по САПР BAR. Поддерживается собственное
-осевое подмножество с нулевыми неиспользуемыми полями. Совместимость с
-исполняемой программой преподавателя этим модулем не утверждается.
+Оформление массивов следует лекции по САПР BAR. В CN и LD записываются
+только характеристики осевой модели, закрепления и продольные нагрузки.
+Чтение прежних полных файлов сохранено. Совместимость с исполняемой
+программой преподавателя этим модулем не утверждается.
 '''
 
 from decimal import Decimal, InvalidOperation, localcontext
@@ -62,7 +63,7 @@ def _rows(text: str, count_fields: int) -> tuple[list[int], list[list[str]]]:
     if any(line.startswith(('*', '=')) for line in lines[1:]):
         return _marked_rows(lines, count_fields)
     counts = lines[1].split()
-    if len(counts) != count_fields:
+    if len(counts) not in (3, count_fields):
         raise ProjectFormatError('Неверная строка размеров массивов')
     rows = [line.split() for line in lines[2:]]
     return [_integer(value) for value in counts], rows
@@ -116,9 +117,15 @@ def _marked_rows(lines: list[str], count_fields: int) -> tuple[list[int], list[l
             continue
         if counts is None:
             values = line.split()
-            if len(values) != count_fields:
+            if len(values) not in (3, count_fields):
                 raise ProjectFormatError('Неверная строка размеров массивов')
             counts = [_integer(value) for value in values]
+            if kind == 'CN' and len(counts) == 3:
+                sections = (('XR', 'NR,1:2', 0, 2), ('XS', 'NS,1:3', 1, 3),
+                            ('XC', 'NC,0:3', 2, 4))
+            elif kind == 'LD' and len(counts) == 3:
+                sections = (('NB', 'NA,0:0', 0, 1), ('QR', 'NQR,0:1', 1, 2),
+                            ('QS', 'NQS,0:1', 2, 2))
             continue
         if section < 0:
             raise ProjectFormatError(f'Перед данными должен быть указан раздел файла {kind}')
@@ -195,25 +202,21 @@ def encode_sources(name: str, model: StructuralModel) -> tuple[str, str]:
         modulus = decimal_text(bar.modulus_pa)
         area = decimal_text(bar.area_m2)
         stress = decimal_text(bar.allowable_stress_pa)
-        characteristics.append(['1', modulus, '0', '0', area, '0', '0', '0', stress, stress])
+        characteristics.append([modulus, area, stress, stress])
     supports = [index + 1 for index, value in enumerate(model.supports) if value]
     forces = [(index + 1, value) for index, value in enumerate(model.nodal_forces) if value]
     loads = [(index + 1, value) for index, value in enumerate(model.distributed_loads) if value]
-    construction = _source_text('CN', name, ('NR', 'NS', 'NC', 'ND', 'NM'), (nodes, count, count, 0, 0), (
+    construction = _source_text('CN', name, ('NR', 'NS', 'NC'), (nodes, count, count), (
         ('XR', 'NR,1:2', ('X1', 'X2'), coordinates),
         ('XS', 'NS,1:3', ('I', 'J', 'Ig'), topology),
-        ('XC', 'NC,0:9', ('Type', 'E', 'Ro', 'aT', 'A', 'Iz', 'y-', 'y+', '[Sp]', '[Sc]'), characteristics),
-        ('XD', 'ND,0:2', ('I', 'Kb', 'Ke'), []),
-        ('XM', 'NM,0:2', ('I', 'M', 'Im'), []),
+        ('XC', 'NC,0:3', ('E', 'A', '[Sp]', '[Sc]'), characteristics),
     ))
-    loading = _source_text('LD', name, ('NA', 'NQR', 'NQS', 'NT'), (len(supports), len(forces), len(loads), 0), (
-        ('NB', 'NA,0:6', ('I', 'K1', 'K2', 'K3', 'U', 'V', 'F'),
-         [[str(node), '1', '1', '1', '0', '0', '0'] for node in supports]),
-        ('QR', 'NQR,0:3', ('I', 'F1', 'F2', 'M'),
-         [[str(node), decimal_text(force), '0', '0'] for node, force in forces]),
-        ('QS', 'NQS,0:4', ('I', 'qx', 'qy', 'mz', 'T'),
-         [[str(bar), decimal_text(load), '0', '0', '0'] for bar, load in loads]),
-        ('FT', 'NT,0:1', ('t', 'F(t)'), []),
+    loading = _source_text('LD', name, ('NA', 'NQR', 'NQS'), (len(supports), len(forces), len(loads)), (
+        ('NB', 'NA,0:0', ('I',), [[str(node)] for node in supports]),
+        ('QR', 'NQR,0:1', ('I', 'F'),
+         [[str(node), decimal_text(force)] for node, force in forces]),
+        ('QS', 'NQS,0:1', ('I', 'q'),
+         [[str(bar), decimal_text(load)] for bar, load in loads]),
     ))
     return construction, loading
 
@@ -231,8 +234,10 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
     Raises:
         ProjectFormatError: Формат повреждён или содержит другую постановку задачи.
     '''
-    (nr, ns, nc, nd, nm), rows = _rows(construction, 5)
-    if nr != (ns + 1 if ns else 0) or nc != ns or nd or nm:
+    counts, rows = _rows(construction, 5)
+    compact = len(counts) == 3
+    nr, ns, nc = counts[:3]
+    if nr != (ns + 1 if ns else 0) or nc != ns or any(counts[3:]):
         raise ProjectFormatError('Поддерживается последовательная осевая цепочка без масс')
     if len(rows) != nr + ns + nc:
         raise ProjectFormatError('Число строк CN не совпадает с размерами массивов')
@@ -248,24 +253,32 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
             raise ProjectFormatError('Стержни должны последовательно соединять соседние узлы')
     bars: list[Bar] = []
     for index, row in enumerate(rows[nr + ns:]):
-        if len(row) != 10:
+        if len(row) != (4 if compact else 10):
             raise ProjectFormatError('Неверное число характеристик стержня')
         values = [_decimal(value) for value in row]
-        if values[0] != 1 or any(values[item] != 0 for item in (2, 3, 5, 6, 7)):
-            raise ProjectFormatError('Поддерживаются только L A E и допускаемое напряжение')
-        if values[8] != values[9]:
+        if compact:
+            modulus, area, tension_stress, compression_stress = values
+        else:
+            if values[0] != 1 or any(values[item] != 0 for item in (2, 3, 5, 6, 7)):
+                raise ProjectFormatError('Поддерживаются только L A E и допускаемое напряжение')
+            modulus, area, tension_stress, compression_stress = (values[item] for item in (1, 4, 8, 9))
+        if tension_stress != compression_stress:
             raise ProjectFormatError('Допускаемое напряжение должно быть одинаковым при растяжении и сжатии')
         with localcontext() as context:
             context.prec = max(28, max(value.adjusted() for value in coordinates)
                                - min(value.as_tuple().exponent for value in coordinates) + 4)
             length = coordinates[index + 1] - coordinates[index]
-        bars.append(Bar(length, values[4], values[1], values[8]))
-    (na, nqr, nqs, nt), rows = _rows(loading, 4)
-    if nt or len(rows) != na + nqr + nqs:
+        bars.append(Bar(length, area, modulus, tension_stress))
+    counts, rows = _rows(loading, 4)
+    compact = len(counts) == 3
+    na, nqr, nqs = counts[:3]
+    if any(counts[3:]) or len(rows) != na + nqr + nqs:
         raise ProjectFormatError('Поддерживаются статические нагрузки с заданными размерами массивов')
     supports = [False] * nr
     for row in rows[:na]:
-        if len(row) != 7 or [_decimal(value) for value in row[1:]] != [1, 1, 1, 0, 0, 0]:
+        if len(row) != (1 if compact else 7):
+            raise ProjectFormatError('Неверное число параметров закрепления')
+        if not compact and [_decimal(value) for value in row[1:]] != [1, 1, 1, 0, 0, 0]:
             raise ProjectFormatError('Поддерживаются жёсткие опоры с нулевыми перемещениями')
         index = _integer(row[0]) - 1
         if not 0 <= index < nr or supports[index]:
@@ -274,8 +287,8 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
     forces = [Decimal('0')] * nr
     loads = [Decimal('0')] * ns
     for records, values, width, label in (
-        (rows[na:na + nqr], forces, 4, 'узловой силы'),
-        (rows[na + nqr:], loads, 5, 'погонной нагрузки'),
+        (rows[na:na + nqr], forces, 2 if compact else 4, 'узловой силы'),
+        (rows[na + nqr:], loads, 2 if compact else 5, 'погонной нагрузки'),
     ):
         seen: set[int] = set()
         for row in records:

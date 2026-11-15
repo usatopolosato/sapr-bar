@@ -146,7 +146,7 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.page.nodesTable.item(1, 2).setCheckState(Qt.CheckState.Checked)
         self.assertTrue(self.page.model.supports[1])
         self.page.supportNodeCombo.setCurrentIndex(len(self.page.model.supports) - 1)
-        self.page.fixedSupportCheck.setChecked(True)
+        self.page.fixedSupportButton.click()
         self.assertTrue(self.page.model.right_support)
         self.page.removeLoadButton.click()
         self.assertEqual(self.page.model.distributed_loads[0], Decimal('0'))
@@ -169,22 +169,32 @@ class PreprocessorEditorTests(unittest.TestCase):
     def test_boundary_conditions_select_any_node_and_sync_with_table(self) -> None:
         '''Согласует граничные условия внутреннего узла в таблице и инспекторе.'''
         self.page.supportNodeCombo.setCurrentIndex(2)
-        self.assertFalse(self.page.fixedSupportCheck.isChecked())
-        self.page.fixedSupportCheck.setChecked(True)
+        self.assertFalse(self.page.fixedSupportButton.isChecked())
+        self.assertTrue(self.page.freeSupportButton.isChecked())
+        self.page.fixedSupportButton.click()
         self.assertTrue(self.page.model.supports[2])
+        self.assertFalse(self.page.freeSupportButton.isChecked())
         self.assertEqual(self.page.nodesTable.item(2, 2).checkState(), Qt.CheckState.Checked)
+        self.page.fixedSupportButton.click()
+        self.assertTrue(self.page.model.supports[2])
+        self.page.freeSupportButton.click()
+        self.assertFalse(self.page.model.supports[2])
+        self.assertEqual(self.page.nodesTable.item(2, 2).checkState(), Qt.CheckState.Unchecked)
+        self.page.nodesTable.item(2, 2).setCheckState(Qt.CheckState.Checked)
+        self.assertTrue(self.page.fixedSupportButton.isChecked())
         self.page.nodesTable.item(2, 2).setCheckState(Qt.CheckState.Unchecked)
-        self.assertFalse(self.page.fixedSupportCheck.isChecked())
+        self.assertFalse(self.page.fixedSupportButton.isChecked())
+        self.assertTrue(self.page.freeSupportButton.isChecked())
         self.page.nodesTable.setCurrentCell(0, 3)
         self.assertEqual(self.page.supportNodeCombo.currentData(), 0)
-        self.assertTrue(self.page.fixedSupportCheck.isChecked())
+        self.assertTrue(self.page.fixedSupportButton.isChecked())
 
     def test_boundary_editor_preserves_pending_parameters_and_disables_empty_model(self) -> None:
         '''Не теряет ввод параметров при закреплении узла и обрабатывает пустую схему.'''
         self.page.lengthInput.setText('2.34567890123456789')
         self.page.lengthInput.setModified(True)
         self.page.supportNodeCombo.setCurrentIndex(1)
-        self.page.fixedSupportCheck.setChecked(True)
+        self.page.fixedSupportButton.click()
         self.assertTrue(self.page.lengthInput.isModified())
         self.assertTrue(self.page.commit_pending_edits())
         self.assertEqual(self.page.model.bars[0].length_m, Decimal('2.34567890123456789'))
@@ -192,10 +202,22 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.page.set_model(StructuralModel())
         self.assertEqual(self.page.supportNodeCombo.count(), 0)
         self.assertFalse(self.page.supportNodeCombo.isEnabled())
-        self.assertFalse(self.page.fixedSupportCheck.isEnabled())
+        self.assertFalse(self.page.fixedSupportButton.isEnabled())
+        self.assertFalse(self.page.freeSupportButton.isEnabled())
+        self.assertFalse(self.page.fixedSupportButton.isChecked())
+        self.assertFalse(self.page.freeSupportButton.isChecked())
         self.page.set_model(demo_model())
         self.assertEqual(self.page.supportNodeCombo.currentData(), 0)
-        self.assertTrue(self.page.fixedSupportCheck.isChecked())
+        self.assertTrue(self.page.fixedSupportButton.isChecked())
+
+    def test_boundary_choice_does_not_discard_invalid_table_input(self) -> None:
+        '''Сохраняет ошибочную ячейку и закрепление при попытке сменить условие.'''
+        self.page.barsTable.item(0, 1).setText('ошибка')
+        self.page.freeSupportButton.click()
+        self.assertTrue(self.page.model.supports[0])
+        self.assertTrue(self.page.fixedSupportButton.isChecked())
+        self.assertFalse(self.page.freeSupportButton.isChecked())
+        self.assertEqual(self.page.barsTable.item(0, 1).text(), 'ошибка')
 
     def test_validation_does_not_block_draft_saving(self) -> None:
         '''Разрешает сохранять неполную модель без файлов для процессора.'''

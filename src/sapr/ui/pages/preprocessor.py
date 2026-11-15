@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QApplication, QHeaderView, QLineEdit, QMessageBox,
+    QAbstractItemView, QApplication, QButtonGroup, QHeaderView, QLineEdit, QMessageBox,
     QScrollArea, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QWidget,
 )
 
@@ -103,8 +103,10 @@ class PreprocessorPage(QWidget):
         self.loadKindCombo.currentIndexChanged.connect(self._load_kind_changed)
         self.loadElementCombo.currentIndexChanged.connect(self._load_element_changed)
         self.supportNodeCombo.currentIndexChanged.connect(self._support_node_selected)
-        self.fixedSupportCheck.toggled.connect(self._set_selected_support)
-        self.nodesButton.clicked.connect(lambda: self.dataTabs.setCurrentIndex(1))
+        self._support_group = QButtonGroup(self)
+        self._support_group.addButton(self.freeSupportButton, 0)
+        self._support_group.addButton(self.fixedSupportButton, 1)
+        self._support_group.idClicked.connect(lambda choice: self._set_selected_support(bool(choice)))
         self.saveProjectButton.clicked.connect(self._request_save)
         self.validateButton.clicked.connect(self._validate)
         self.fitButton.clicked.connect(self.structure_view.fit_model)
@@ -675,21 +677,22 @@ class PreprocessorPage(QWidget):
         self.supportNodeCombo.blockSignals(True)
         self.supportNodeCombo.clear()
         for index in range(count):
-            self.supportNodeCombo.addItem(f'Узел {index + 1:02d}', index)
+            self.supportNodeCombo.addItem(f'{index + 1:02d}', index)
         self.supportNodeCombo.setCurrentIndex(self._support_node if count else -1)
         self.supportNodeCombo.blockSignals(False)
         self.supportNodeCombo.setEnabled(bool(count))
-        self.nodesButton.setEnabled(bool(count))
         self._sync_support_value()
 
     def _sync_support_value(self) -> None:
         '''Показывает граничные условия выбранного узла без изменения модели.'''
         index = self.supportNodeCombo.currentData()
         valid = index is not None and 0 <= index < len(self._model.supports)
-        self.fixedSupportCheck.blockSignals(True)
-        self.fixedSupportCheck.setChecked(self._model.supports[index] if valid else False)
-        self.fixedSupportCheck.setEnabled(valid)
-        self.fixedSupportCheck.blockSignals(False)
+        self._support_group.setExclusive(False)
+        self.freeSupportButton.setChecked(valid and not self._model.supports[index])
+        self.fixedSupportButton.setChecked(valid and self._model.supports[index])
+        self._support_group.setExclusive(True)
+        self.freeSupportButton.setEnabled(valid)
+        self.fixedSupportButton.setEnabled(valid)
 
     def _support_node_selected(self) -> None:
         '''Согласует выбранный узел инспектора с таблицей.'''
@@ -798,6 +801,10 @@ class PreprocessorPage(QWidget):
             self.propertiesLayout.addWidget(getattr(self, name), 0 if narrow else index, index if narrow else 0)
         for index, name in enumerate(('loadKindField', 'loadElementField', 'loadValueField')):
             self.loadFieldsLayout.addWidget(getattr(self, name), 0 if narrow else index, index if narrow else 0)
+        for index, name in enumerate(('supportNodeField', 'supportStateField')):
+            self.boundaryFieldsLayout.addWidget(getattr(self, name), 0 if narrow else index, index if narrow else 0)
+        self.boundaryFieldsLayout.setColumnStretch(0, 1)
+        self.boundaryFieldsLayout.setColumnStretch(1, 2 if narrow else 0)
         for page in (self.barEditorTab, self.loadEditorTab, self.supportsTab):
             page.layout().invalidate()
             page.layout().activate()
