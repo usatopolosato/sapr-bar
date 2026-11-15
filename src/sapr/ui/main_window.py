@@ -4,7 +4,7 @@ from enum import Enum
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import QSettings, QThreadPool, QTimer, Qt
 from PyQt6.QtGui import QActionGroup, QKeySequence, QPalette, QShortcut
 from PyQt6.QtWidgets import (
     QButtonGroup, QDialog, QFileDialog, QMainWindow,
@@ -17,9 +17,11 @@ from ..storage import Project, ProjectStore
 from .loader import load_form
 from .pages.placeholder import PlaceholderPage
 from .pages.preprocessor import PreprocessorPage
+from .pages.processor import ProcessorPage
 from .pages.project_hub import ProjectHubPage
 from .pages.welcome import WelcomePage
 from .project_dialog import ProjectDialog
+from .processor_task import ProcessorTask
 from .theme import ThemeColors, ThemeManager, ThemeMode
 
 
@@ -49,14 +51,15 @@ class MainWindow(QMainWindow):
         self._store = ProjectStore()
         self.current_project: Project | None = None
         self._dirty = False
+        self._processor_revision = 0
+        self._processor_fingerprint = ''
+        self._processor_signature = None
+        self._processor_task = None
         self.current_page = Page.WELCOME
         self.welcome_page = WelcomePage(self)
         self.project_page = ProjectHubPage(self)
         self.preprocessor_page = PreprocessorPage(self)
-        self.processor_page = PlaceholderPage(
-            'Этап 2', 'Процессор',
-            'Расчёт перемещений узлов', self,
-        )
+        self.processor_page = ProcessorPage(self)
         self.postprocessor_page = PlaceholderPage(
             'Этап 3', 'Постпроцессор',
             'Усилия напряжения и перемещения\nЭпюры и отчёт', self,
@@ -105,12 +108,17 @@ class MainWindow(QMainWindow):
         self.project_page.processorRequested.connect(partial(self.navigate, Page.PROCESSOR))
         self.project_page.postprocessorRequested.connect(partial(self.navigate, Page.POSTPROCESSOR))
         self.project_page.homeRequested.connect(partial(self.navigate, Page.WELCOME))
-        self.processor_page.backRequested.connect(partial(self.navigate, Page.PROJECT))
+        self.processor_page.preprocessorRequested.connect(partial(self.navigate, Page.PREPROCESSOR))
+        self.processor_page.calculateRequested.connect(self.calculate_project)
         self.postprocessor_page.backRequested.connect(partial(self.navigate, Page.PROJECT))
         self.homeButton.clicked.connect(partial(self.navigate, Page.WELCOME))
         self.preprocessor_page.modelChanged.connect(self._model_changed)
         self.preprocessor_page.saveRequested.connect(self.save_project)
         self.preprocessor_page.validateRequested.connect(self.validate_project)
+        self._processor_watch = QTimer(self)
+        self._processor_watch.setInterval(1000)
+        self._processor_watch.timeout.connect(self._watch_processor_files)
+        self._processor_watch.start()
         self._shortcuts = []
         for sequence, action in (
             ('Ctrl+N', self.create_project),
@@ -181,6 +189,9 @@ class MainWindow(QMainWindow):
         self.pageStack.setCurrentWidget(self._page_containers[page])
         if page in self._nav_buttons:
             self._nav_buttons[page].setChecked(True)
+        if page is Page.PROCESSOR:
+            self.preprocessor_page.commit_pending_edits()
+            self._refresh_processor()
 
     def _activate_project(self, project: Project) -> None:
         '''Загружает сохранённую модель в рабочее пространство.
@@ -189,6 +200,7 @@ class MainWindow(QMainWindow):
             project: Проект с расположением и исходными данными.
         '''
         self.current_project = project
+        self._invalidate_processor()
         self._dirty = False
         self.preprocessor_page.set_model(project.model)
         self.project_page.set_project_name(project.name)
@@ -239,6 +251,7 @@ class MainWindow(QMainWindow):
             return False
         self._dirty = False
         self._update_title()
+        self._invalidate_processor()
         self.preprocessor_page.show_status('Черновик сохранён' if issues else 'Проект проверен и сохранён')
         return True
 
@@ -253,7 +266,80 @@ class MainWindow(QMainWindow):
             model: Новое состояние редактируемой конструкции.
         '''
         self._dirty = self.current_project is not None and model != self.current_project.model
+        self._invalidate_processor()
         self._update_title()
+
+    def _invalidate_processor(self) -> None:
+        '''Отзывает результат и выполняющийся запрос при изменении проекта.'''
+        self._processor_revision += 1
+        self._processor_fingerprint = ''
+        self._processor_signature = None
+        self._processor_task = None
+        self.processor_page.set_availability(False, 'Проверьте проект в препроцессоре', reset=True)
+
+    def _refresh_processor(self) -> bool:
+        '''Проверяет актуальность файлов и отсутствие несохранённого ввода.'''
+        if self.current_project is None:
+            self.processor_page.set_availability(False, 'Выберите проект')
+            return False
+        if self._dirty or self.preprocessor_page.has_pending_edits:
+            self.processor_page.set_availability(False, 'Данные изменены. Проверьте проект в препроцессоре')
+            return False
+        try:
+            _, fingerprint = self._store.read_for_processor(self.current_project)
+            self._processor_signature = self._store.file_signature(self.current_project.path)
+        except (OSError, ValueError) as error:
+            self._processor_revision += 1
+            self._processor_task = None
+            self.processor_page.set_availability(False, str(error))
+            return False
+        changed = bool(self._processor_fingerprint and fingerprint != self._processor_fingerprint)
+        self._processor_fingerprint = fingerprint
+        self.processor_page.set_availability(True, 'CNX и LDX проверены', reset=changed)
+        if self._processor_task is not None:
+            self.processor_page.set_busy()
+        return True
+
+    def calculate_project(self) -> None:
+        '''Запускает расчёт актуального снимка в рабочем потоке.'''
+        if self._processor_task is not None or not self._refresh_processor():
+            return
+        self._processor_revision += 1
+        task = ProcessorTask(self.current_project, self._processor_revision)
+        task.signals.finished.connect(self._processor_finished)
+        self._processor_task = task
+        self.processor_page.set_busy()
+        QThreadPool.globalInstance().start(task)
+
+    def _processor_finished(self, revision: int, result, fingerprint: str, error: str) -> None:
+        '''Публикует результат только для неизменённого текущего проекта.'''
+        if revision != self._processor_revision:
+            return
+        self._processor_task = None
+        if error:
+            self.processor_page.set_availability(False, error, reset=True)
+            return
+        if not self._refresh_processor():
+            return
+        if fingerprint != self._processor_fingerprint:
+            self.processor_page.set_availability(False, 'Данные изменились. Повторите проверку', reset=True)
+            return
+        self.processor_page.set_result(result)
+
+    def _watch_processor_files(self) -> None:
+        '''Скрывает старые результаты после внешнего изменения файлов.'''
+        if self.current_page is not Page.PROCESSOR or self.current_project is None:
+            return
+        try:
+            signature = self._store.file_signature(self.current_project.path)
+        except ValueError:
+            signature = None
+        if signature != self._processor_signature:
+            self._processor_revision += 1
+            self._processor_task = None
+            self._processor_signature = signature
+            self.processor_page.set_availability(False, 'Файлы изменены. Проверьте проект в препроцессоре', reset=True)
+            self._refresh_processor()
 
     def _update_title(self) -> None:
         '''Показывает название и наличие несохранённых изменений.'''

@@ -10,7 +10,7 @@ import tempfile
 
 from ..domain import ModelValidationError, StructuralModel, validate_model
 from .formats import ProjectFormatError, decode_sources, encode_sources
-from .processed_formats import PROCESSED_FORMAT, encode_processed, processed_matches
+from .processed_formats import PROCESSED_FORMAT, decode_processed, encode_processed, processed_matches
 
 
 @dataclass(frozen=True)
@@ -45,6 +45,63 @@ class ProjectStore:
 
     FILES = ('project.cn', 'project.ld', 'project.cnx', 'project.ldx', 'project.kpr')
     MAX_FILE_BYTES = 8 * 1024 * 1024
+
+    def read_for_processor(self, project: Project) -> tuple[StructuralModel, str]:
+        '''Читает согласованный снимок актуальных CNX и LDX после проверки.
+
+        Args:
+            project: Открытый проект с последней сохранённой моделью.
+
+        Returns:
+            Модель из обработанных файлов и отпечаток всех файлов проекта.
+
+        Raises:
+            ProjectFormatError: Проверка отсутствует, файлы устарели или изменены.
+        '''
+        folder = project.path.resolve()
+        try:
+            before = self.file_signature(folder)
+            contents = {name: self._read_bytes(folder / name) for name in self.FILES}
+            after = self.file_signature(folder)
+            if before != after:
+                raise ProjectFormatError('Файлы изменились во время чтения. Повторите проверку')
+            times = {name: stamp for name, stamp, _ in after}
+            if min(times['project.cnx'], times['project.ldx']) < max(times['project.cn'], times['project.ld']):
+                raise ProjectFormatError('CNX и LDX устарели. Проверьте проект в препроцессоре')
+            manifest = json.loads(contents['project.kpr'].decode('utf-8-sig'))
+            hashes = {name: sha256(contents[name]).hexdigest() for name in ('project.cn', 'project.ld')}
+            if (not isinstance(manifest, dict) or manifest.get('format') != 'sapr-bar-project'
+                    or type(manifest.get('version')) is not int or manifest['version'] != 1
+                    or manifest.get('units') != 'SI' or manifest.get('validated') is not True
+                    or manifest.get('prepared_format') != PROCESSED_FORMAT or manifest.get('sources') != hashes):
+                raise ProjectFormatError('Исходные данные не прошли актуальную проверку')
+            source = decode_sources(contents['project.cn'].decode('utf-8-sig'), contents['project.ld'].decode('utf-8-sig'))
+            cnx, ldx = contents['project.cnx'].decode('ascii'), contents['project.ldx'].decode('ascii')
+            expected = encode_processed(source)
+            if not processed_matches(cnx, expected[0]) or not processed_matches(ldx, expected[1]):
+                raise ProjectFormatError('CNX и LDX не соответствуют исходным данным. Повторите проверку')
+            model = decode_processed(cnx, ldx)
+            if model != project.model:
+                raise ProjectFormatError('Проект изменён вне приложения. Откройте его заново')
+        except (UnicodeError, json.JSONDecodeError) as error:
+            raise ProjectFormatError('Повреждены файлы проекта. Повторите проверку') from error
+        fingerprint = sha256()
+        for name in self.FILES:
+            fingerprint.update(name.encode('ascii'))
+            fingerprint.update(sha256(contents[name]).digest())
+        fingerprint.update(repr(after).encode('ascii'))
+        return model, fingerprint.hexdigest()
+
+    def file_signature(self, folder: Path) -> tuple[tuple[str, int, int], ...]:
+        '''Возвращает времена изменения и размеры файлов для контроля актуальности.'''
+        values = []
+        for name in self.FILES:
+            try:
+                stat = (folder / name).stat()
+            except OSError as error:
+                raise ProjectFormatError('Нет проверенных CNX и LDX. Проверьте проект в препроцессоре') from error
+            values.append((name, stat.st_mtime_ns, stat.st_size))
+        return tuple(values)
 
     def create(self, parent: Path, name: str) -> Project:
         '''Создаёт новую папку с пустым черновиком проекта.

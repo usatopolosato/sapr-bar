@@ -131,6 +131,14 @@ class PreprocessorPage(QWidget):
         '''Возвращает текущие исходные данные в единицах СИ.'''
         return self._model
 
+    @property
+    def has_pending_edits(self) -> bool:
+        '''Возвращает наличие неприменённого или некорректного ввода.'''
+        pending = any(field.isModified() for field in self._bar_fields)
+        if self._adding_bar:
+            pending = any(field.text().strip() for field in self._bar_fields)
+        return bool(self._invalid_cells or pending or self.loadValueInput.isModified())
+
     def set_model(self, model: StructuralModel) -> None:
         '''Заменяет модель при создании или открытии проекта.
 

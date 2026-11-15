@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ProcessorPage</class>
+ <widget class="QWidget" name="ProcessorPage">
+  <layout class="QVBoxLayout" name="pageLayout">
+   <property name="spacing"><number>12</number></property>
+   <property name="leftMargin"><number>20</number></property>
+   <property name="topMargin"><number>20</number></property>
+   <property name="rightMargin"><number>20</number></property>
+   <property name="bottomMargin"><number>20</number></property>
+   <item><layout class="QHBoxLayout" name="headerLayout">
+    <item><widget class="QLabel" name="titleLabel">
+     <property name="text"><string>Процессор</string></property>
+     <property name="role" stdset="0"><string>pageTitle</string></property>
+    </widget></item>
+    <item><spacer name="headerSpace"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>0</height></size></property></spacer></item>
+    <item><widget class="QPushButton" name="calculateButton">
+     <property name="text"><string>Рассчитать</string></property>
+     <property name="role" stdset="0"><string>primary</string></property>
+    </widget></item>
+   </layout></item>
+   <item><widget class="QLabel" name="statusLabel">
+    <property name="text"><string>Выберите проект</string></property>
+    <property name="wordWrap"><bool>true</bool></property>
+    <property name="role" stdset="0"><string>muted</string></property>
+   </widget></item>
+   <item><widget class="QStackedWidget" name="stateStack">
+    <widget class="QWidget" name="emptyPage">
+     <layout class="QVBoxLayout" name="emptyLayout">
+      <item><spacer name="emptyTop"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>0</width><height>40</height></size></property></spacer></item>
+      <item><widget class="QLabel" name="emptyFormulaLabel">
+       <property name="text"><string>A * Δ = b</string></property>
+       <property name="role" stdset="0"><string>formula</string></property>
+       <property name="alignment"><set>Qt::AlignCenter</set></property>
+      </widget></item>
+      <item><widget class="QLabel" name="emptyLabel">
+       <property name="text"><string>Проверьте проект в препроцессоре</string></property>
+       <property name="wordWrap"><bool>true</bool></property>
+       <property name="alignment"><set>Qt::AlignCenter</set></property>
+      </widget></item>
+      <item alignment="Qt::AlignHCenter"><widget class="QPushButton" name="preprocessorButton"><property name="text"><string>В препроцессор</string></property><property name="role" stdset="0"><string>secondary</string></property></widget></item>
+      <item><spacer name="emptyBottom"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>0</width><height>40</height></size></property></spacer></item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="solutionPage">
+     <layout class="QVBoxLayout" name="solutionLayout">
+      <property name="spacing"><number>12</number></property>
+      <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+      <item><layout class="QHBoxLayout" name="formulaLayout">
+       <item><widget class="QLabel" name="systemLabel"><property name="text"><string>A * Δ = b</string></property><property name="role" stdset="0"><string>formula</string></property></widget></item>
+       <item><spacer name="formulaSpace"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>0</height></size></property></spacer></item>
+       <item><widget class="QComboBox" name="numberFormatCombo"><item><property name="text"><string>Кратко</string></property></item><item><property name="text"><string>Точно</string></property></item></widget></item>
+      </layout></item>
+      <item><widget class="QTabBar" name="stepsBar"/></item>
+      <item><widget class="QComboBox" name="stepCombo"/></item>
+      <item><widget class="QFrame" name="solutionCard">
+       <property name="role" stdset="0"><string>card</string></property>
+       <layout class="QVBoxLayout" name="cardLayout">
+        <property name="spacing"><number>12</number></property>
+        <property name="leftMargin"><number>16</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>16</number></property><property name="bottomMargin"><number>16</number></property>
+        <item><widget class="QLabel" name="stepTitleLabel"><property name="text"><string>До закреплений</string></property><property name="role" stdset="0"><string>cardTitle</string></property></widget></item>
+        <item><widget class="QLabel" name="stepDescriptionLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
+        <item><widget class="QStackedWidget" name="stepsStack">
+         <widget class="QWidget" name="matrixPage"><layout class="QVBoxLayout" name="matrixLayout">
+          <property name="spacing"><number>16</number></property>
+          <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+          <item><widget class="QWidget" name="backSubstitutionPanel"><layout class="QVBoxLayout" name="backSubstitutionLayout">
+           <property name="spacing"><number>8</number></property>
+           <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+           <item><widget class="QLabel" name="backSubstitutionTitle"><property name="text"><string>Обратный ход</string></property><property name="role" stdset="0"><string>cardTitle</string></property></widget></item>
+           <item><widget class="QTableView" name="backSubstitutionView"><property name="minimumSize"><size><width>0</width><height>120</height></size></property></widget></item>
+           <item><widget class="QTextBrowser" name="backSubstitutionDetails">
+            <property name="minimumSize"><size><width>0</width><height>110</height></size></property>
+            <property name="maximumSize"><size><width>16777215</width><height>140</height></size></property>
+            <property name="readOnly"><bool>true</bool></property>
+            <property name="frameShape"><enum>QFrame::NoFrame</enum></property>
+            <property name="tabChangesFocus"><bool>true</bool></property>
+           </widget></item>
+          </layout></widget></item>
+         </layout></widget>
+         <widget class="QWidget" name="equationsPage"><layout class="QVBoxLayout" name="equationsLayout">
+          <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+          <item><widget class="QTableView" name="equationsView"/></item>
+          <item><widget class="QLabel" name="nodeFormulaLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+         </layout></widget>
+         <widget class="QWidget" name="displacementsPage"><layout class="QHBoxLayout" name="displacementsLayout">
+          <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+          <item><widget class="QLabel" name="deltaLabel"><property name="text"><string>Δ =</string></property><property name="role" stdset="0"><string>formula</string></property></widget></item>
+          <item><widget class="QTableView" name="displacementsView"/></item>
+         </layout></widget>
+        </widget></item>
+       </layout>
+      </widget></item>
+     </layout>
+    </widget>
+   </widget></item>
+  </layout>
+ </widget>
+ <tabstops><tabstop>calculateButton</tabstop><tabstop>preprocessorButton</tabstop><tabstop>numberFormatCombo</tabstop><tabstop>stepCombo</tabstop><tabstop>backSubstitutionView</tabstop><tabstop>backSubstitutionDetails</tabstop><tabstop>equationsView</tabstop><tabstop>displacementsView</tabstop></tabstops>
+ <resources/>
+ <connections/>
+</ui>

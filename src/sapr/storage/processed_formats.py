@@ -5,11 +5,11 @@
 закреплённых узлов, узловые силы F и погонные нагрузки q.
 '''
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 import re
 
-from ..domain import ModelValidationError, StructuralModel, validate_model
-from .formats import decimal_text
+from ..domain import Bar, ModelValidationError, StructuralModel, validate_model
+from .formats import ProjectFormatError, decimal_text
 
 
 PROCESSED_FORMAT = 'sapr-bar-numeric-axial-v2'
@@ -122,3 +122,111 @@ def processed_matches(actual: str, expected: str) -> bool:
             if not actual_value.is_finite() or actual_value != Decimal(expected_token):
                 return False
     return True
+
+
+class _NumericReader:
+    '''Читает ограниченные числовые поля подготовленного файла.'''
+
+    def __init__(self, text: str, marker: str) -> None:
+        self.tokens = text.split()
+        self.index = 0
+        if not self.tokens or self.tokens.pop() != marker:
+            raise ProjectFormatError(f'Отсутствует идентификатор {marker}')
+
+    def number(self) -> Decimal:
+        '''Читает конечное Decimal без округления при разборе.'''
+        if self.index >= len(self.tokens):
+            raise ProjectFormatError('Недостаточно числовых данных')
+        token = self.tokens[self.index]
+        self.index += 1
+        if len(token) > 8192 or not NUMBER_PATTERN.fullmatch(token):
+            raise ProjectFormatError('Неверное числовое поле подготовленного файла')
+        try:
+            value = Decimal(token)
+        except InvalidOperation as error:
+            raise ProjectFormatError('Неверная десятичная запись подготовленного файла') from error
+        if not value.is_finite() or abs(value.adjusted()) > 10000:
+            raise ProjectFormatError('Величина выходит за допустимый диапазон')
+        return value
+
+    def integer(self) -> int:
+        '''Читает индекс или размер массива, ограниченный моделью.'''
+        if self.index >= len(self.tokens) or not INTEGER_PATTERN.fullmatch(self.tokens[self.index]):
+            raise ProjectFormatError('Ожидался целый индекс')
+        value = self.number()
+        if not ZERO <= value <= 10001:
+            raise ProjectFormatError('Индекс вне допустимого диапазона')
+        return int(value)
+
+    def finish(self) -> None:
+        '''Отклоняет лишние данные после массивов.'''
+        if self.index != len(self.tokens):
+            raise ProjectFormatError('Лишние данные в подготовленном файле')
+
+
+def decode_processed(construction: str, loading: str) -> StructuralModel:
+    '''Читает сокращённые CNX и LDX как входные данные процессора.
+
+    Args:
+        construction: Числовые координаты, связи и характеристики CNX.
+        loading: Числовые закрепления, силы и нагрузки LDX.
+
+    Returns:
+        Проверенная модель с точными длинами и величинами Decimal.
+
+    Raises:
+        ProjectFormatError: Нарушена структура числовых массивов.
+        ModelValidationError: Параметры конструкции некорректны.
+    '''
+    cn = _NumericReader(construction, 'CNX')
+    nr, ns, nc = (cn.integer() for _ in range(3))
+    if not 1 <= ns <= 10000 or nr != ns + 1 or not 1 <= nc <= ns:
+        raise ProjectFormatError('Неверные размеры массивов CNX')
+    positions = []
+    for _ in range(nr):
+        positions.append(cn.number())
+        if cn.number() != ZERO:
+            raise ProjectFormatError('Поддерживается только общая ось стержней')
+    groups = []
+    for index in range(ns):
+        start, end, group = (cn.integer() for _ in range(3))
+        if (start, end) != (index + 1, index + 2) or not 1 <= group <= nc:
+            raise ProjectFormatError('Нарушена последовательность стержней CNX')
+        groups.append(group - 1)
+    properties = [tuple(cn.number() for _ in range(4)) for _ in range(nc)]
+    cn.finish()
+    precision = max(value.adjusted() for value in positions)
+    precision -= min(value.as_tuple().exponent for value in positions)
+    bars = []
+    with localcontext() as context:
+        context.prec = max(28, precision + 3)
+        for index, group in enumerate(groups):
+            modulus, area, tension, compression = properties[group]
+            if tension != compression:
+                raise ProjectFormatError('Ожидалось единое допускаемое напряжение')
+            bars.append(Bar(positions[index + 1] - positions[index], area, modulus, tension))
+    ld = _NumericReader(loading, 'LDX')
+    na, nqr, nqs = (ld.integer() for _ in range(3))
+    if na > nr or nqr > nr or nqs > ns:
+        raise ProjectFormatError('Неверные размеры массивов LDX')
+    supports = [False] * nr
+    for _ in range(na):
+        index = ld.integer() - 1
+        if not 0 <= index < nr or supports[index]:
+            raise ProjectFormatError('Некорректный или повторяющийся узел закрепления')
+        supports[index] = True
+    forces, loads = [ZERO] * nr, [ZERO] * ns
+    for count, target in ((nqr, forces), (nqs, loads)):
+        seen = set()
+        for _ in range(count):
+            index, value = ld.integer() - 1, ld.number()
+            if not 0 <= index < len(target) or index in seen:
+                raise ProjectFormatError('Некорректный или повторяющийся индекс нагрузки')
+            seen.add(index)
+            target[index] = value
+    ld.finish()
+    model = StructuralModel(tuple(bars), tuple(forces), tuple(loads), tuple(supports))
+    issues = validate_model(model)
+    if issues:
+        raise ModelValidationError(issues)
+    return model

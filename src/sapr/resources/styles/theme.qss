@@ -200,6 +200,7 @@ QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {
     color: ${text};
 }
 QLineEdit:focus, QDoubleSpinBox:focus { border-color: ${accent}; }
+QComboBox:hover, QComboBox:focus { border-color: ${accent}; }
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 0; border: none; }
 QScrollBar:vertical { background: transparent; width: 7px; margin: 0; }
 QScrollBar::handle:vertical { background: ${scrollbar}; min-height: 30px; border-radius: 3px; }
@@ -255,3 +256,29 @@ QMenu::item:checked { color: ${accent}; font-weight: 600; }
 QMenu::item:disabled { color: ${disabled}; }
 QMenu::indicator { width: 0; }
 QWidget:disabled { color: ${disabled}; }
+QLabel[role="formula"] {
+    font-family: "Consolas";
+    font-size: 24px;
+    font-weight: 500;
+}
+#solutionCard QStackedWidget, #matrixPage, #equationsPage, #displacementsPage, #LinearSystemView {
+    background: ${panel};
+}
+#ProcessorPage QTableView {
+    font-family: "Consolas";
+    font-size: 13px;
+}
+#ProcessorPage QTableView::item {
+    padding: 6px;
+}
+#backSubstitutionPanel, #backSubstitutionDetails {
+    background: ${panel};
+    border: none;
+}
+#backSubstitutionDetails {
+    color: ${text};
+    font-family: "Consolas";
+    font-size: 15px;
+    selection-background-color: ${selection};
+    selection-color: ${selection_text};
+}
