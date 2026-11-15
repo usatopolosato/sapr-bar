@@ -8,6 +8,7 @@ from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import QDialog, QFileDialog, QWidget
 
 from ..storage import Project, ProjectStore
+from .feedback import set_input_error, show_feedback
 from .loader import load_form
 
 
@@ -59,12 +60,14 @@ class ProjectDialog(QDialog):
         '''Показывает итоговую папку и проверяет наличие имени и пути.'''
         self.errorLabel.hide()
         valid = self.nameInput.hasAcceptableInput() and bool(self.project_name()) and bool(self.directoryInput.text().strip())
+        set_input_error(self.directoryInput, False)
         try:
             target = self.project_directory() / self.project_name() if valid else None
             self.targetPathLabel.setText(str(target) if target is not None else '')
         except (OSError, ValueError):
             valid = False
             self.targetPathLabel.clear()
+            set_input_error(self.directoryInput, True)
             self._show_error('Укажите корректный путь к папке')
         self.continueButton.setEnabled(valid)
 
@@ -85,8 +88,7 @@ class ProjectDialog(QDialog):
         Args:
             text: Причина отказа при выборе пути или создании проекта.
         '''
-        self.errorLabel.setText(text)
-        self.errorLabel.show()
+        show_feedback(self.errorLabel, text, error=True)
 
     def project_name(self) -> str:
         '''Возвращает название нового проекта.

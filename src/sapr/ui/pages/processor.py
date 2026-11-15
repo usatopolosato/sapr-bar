@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHeaderView, QWidget
 
 from ...domain.processor import ProcessorResult
+from ..feedback import show_feedback
 from ..loader import load_form
 from ..math_notation import formula_html
 from ..widgets.back_substitution import BackSubstitutionModel
@@ -55,30 +56,39 @@ class ProcessorPage(QWidget):
             page.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.set_availability(False, 'Выберите проект')
 
-    def set_availability(self, ready: bool, message: str, *, reset: bool = False) -> None:
-        '''Обновляет допуск к расчёту, скрывая недостоверные результаты.'''
+    def set_availability(self, ready: bool, message: str, *, reset: bool = False, error: bool = False) -> None:
+        '''Обновляет допуск к расчёту, скрывая недостоверные результаты.
+
+        Args:
+            ready: Признак актуальных проверенных файлов.
+            message: Причина блокировки или статус готовности.
+            reset: Необходимость сбросить прежний результат.
+            error: Признак ошибки, отличающий её от ожидания проверки.
+        '''
         self.calculateButton.setEnabled(ready)
         self.calculateButton.setText('Рассчитать')
-        self.statusLabel.setText(message)
+        show_feedback(self.statusLabel, message, error=error)
+        self.statusLabel.setToolTip('')
         self.preprocessorButton.setVisible(not ready)
         if reset or not ready:
             self.result = None
         if self.result is None:
             self.stateStack.setCurrentWidget(self.emptyPage)
-            self.emptyLabel.setText('Нажмите Рассчитать' if ready else message)
+            prompt = 'Нажмите Рассчитать' if ready else message
+            self.emptyLabel.setText('Проверьте проект в препроцессоре' if error else prompt)
 
     def set_busy(self) -> None:
         '''Показывает выполнение расчёта без блокировки навигации.'''
         self.calculateButton.setEnabled(False)
         self.calculateButton.setText('Расчёт')
-        self.statusLabel.setText('Вычисление перемещений')
+        show_feedback(self.statusLabel, 'Вычисление перемещений')
 
     def set_result(self, result: ProcessorResult) -> None:
         '''Публикует согласованные этапы одного завершённого расчёта.'''
         self.result = result
         self.calculateButton.setEnabled(True)
         self.calculateButton.setText('Рассчитать')
-        self.statusLabel.setText(f'Расчёт выполнен   Стержней {len(result.model.bars)}   Узлов {len(result.displacements)}')
+        show_feedback(self.statusLabel, f'Расчёт выполнен   Стержней {len(result.model.bars)}   Узлов {len(result.displacements)}')
         self.statusLabel.setToolTip(f'Decimal {result.precision} значащих цифр\nОтносительная невязка {result.relative_residual}')
         self.stateStack.setCurrentWidget(self.solutionPage)
         self._refresh_numbers()

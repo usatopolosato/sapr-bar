@@ -54,7 +54,6 @@ QLabel[role="muted"] {
     color: ${muted};
     font-size: 12px;
 }
-QLabel[role="error"] { color: ${force}; }
 QLabel[role="author"] {
     color: ${muted};
     font-size: 11px;
@@ -281,4 +280,17 @@ QLabel[role="formula"] {
     font-size: 15px;
     selection-background-color: ${selection};
     selection-color: ${selection_text};
+}
+QLabel[role="error"], QFrame[role="card"] QLabel[role="error"], QFrame[role="inspector"] QLabel[role="error"] {
+    color: ${error_text};
+    background: ${error_background};
+    border: 1px solid ${error_border};
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+QLineEdit[invalid="true"], QLineEdit[invalid="true"]:focus {
+    color: ${error_text};
+    background: ${error_background};
+    border-color: ${error_border};
 }

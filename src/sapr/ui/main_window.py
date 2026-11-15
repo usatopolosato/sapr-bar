@@ -291,7 +291,8 @@ class MainWindow(QMainWindow):
         except (OSError, ValueError) as error:
             self._processor_revision += 1
             self._processor_task = None
-            self.processor_page.set_availability(False, str(error))
+            prepared_exists = any((self.current_project.path / name).exists() for name in ('project.cnx', 'project.ldx'))
+            self.processor_page.set_availability(False, str(error), error=self.current_project.validated or prepared_exists)
             return False
         changed = bool(self._processor_fingerprint and fingerprint != self._processor_fingerprint)
         self._processor_fingerprint = fingerprint
@@ -317,7 +318,7 @@ class MainWindow(QMainWindow):
             return
         self._processor_task = None
         if error:
-            self.processor_page.set_availability(False, error, reset=True)
+            self.processor_page.set_availability(False, error, reset=True, error=True)
             return
         if not self._refresh_processor():
             return

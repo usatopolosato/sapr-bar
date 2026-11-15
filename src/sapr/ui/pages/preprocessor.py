@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...domain import Bar, StructuralModel, validate_model
+from ..feedback import set_input_error, show_feedback
 from ..formatting import format_quantity
 from ..loader import load_form
 from ..widgets.structure_view import StructureView
@@ -158,14 +159,14 @@ class PreprocessorPage(QWidget):
         self.show_status('')
         self._refresh()
 
-    def show_status(self, text: str) -> None:
+    def show_status(self, text: str, *, error: bool = False) -> None:
         '''Показывает результат операции или ошибку ввода.
 
         Args:
             text: Сообщение для пользователя или пустая строка.
+            error: Признак ошибки ввода или проверки.
         '''
-        self.statusLabel.setText(text)
-        self.statusLabel.setVisible(bool(text))
+        show_feedback(self.statusLabel, text, error=error)
 
     @staticmethod
     def _parse(text: str, positive: bool = False) -> Decimal:
@@ -298,6 +299,7 @@ class PreprocessorPage(QWidget):
             field.setEnabled(True)
             field.setText(str(getattr(self._model.bars[self._selected_bar], attribute)) if valid else '')
             field.setModified(False)
+            set_input_error(field, False)
         self._update_bar_actions()
 
     def _update_bar_actions(self) -> None:
@@ -367,8 +369,10 @@ class PreprocessorPage(QWidget):
         for field in self._bar_fields:
             try:
                 values.append(self._parse(field.text(), positive=True))
+                set_input_error(field, False)
             except ValueError as error:
-                self.show_status(f'{field.toolTip()} - {error}')
+                set_input_error(field, True)
+                self.show_status(f'{field.toolTip()} - {error}', error=True)
                 field.setFocus()
                 return False
         bar = Bar(*values)
@@ -524,7 +528,7 @@ class PreprocessorPage(QWidget):
         item.setData(Qt.ItemDataRole.UserRole, item.text())
         item.setToolTip(error)
         self._updating = False
-        self.show_status(error)
+        self.show_status(error, error=True)
 
     def _allow_cell_edit(self, table: QTableWidget, item: QTableWidgetItem) -> bool:
         '''Не допускает смещение строк с ещё не исправленной ошибкой.
@@ -538,7 +542,7 @@ class PreprocessorPage(QWidget):
         '''
         if self._invalid_cells and (table, item.row(), item.column()) not in self._invalid_cells:
             self._refresh()
-            self.show_status('Сначала исправьте ошибку в таблице')
+            self.show_status('Сначала исправьте ошибку в таблице', error=True)
             return False
         return True
 
@@ -569,6 +573,7 @@ class PreprocessorPage(QWidget):
         self._load_target = (kind, index) if index is not None else None
         self.loadValueInput.setText(str(values[index]) if index is not None and index < len(values) else '0')
         self.loadValueInput.setModified(False)
+        set_input_error(self.loadValueInput, False)
 
     def _load_kind_changed(self) -> None:
         '''Применяет текущую нагрузку перед сменой её типа.'''
@@ -615,23 +620,25 @@ class PreprocessorPage(QWidget):
         if self._load_target is None:
             return True
         if self._invalid_cells:
-            self.show_status('Сначала исправьте ошибку в таблице')
+            self.show_status('Сначала исправьте ошибку в таблице', error=True)
             return False
         kind, index = self._load_target
         try:
             value = self._parse(self.loadValueInput.text())
         except ValueError as error:
-            self.show_status(str(error))
+            set_input_error(self.loadValueInput, True)
+            self.show_status(str(error), error=True)
             self.loadValueInput.setFocus()
             return False
         self.loadValueInput.setModified(False)
+        set_input_error(self.loadValueInput, False)
         self._set_load(kind, index, value)
         return True
 
     def _remove_load(self) -> None:
         '''Сбрасывает выбранную нагрузку в ноль.'''
         if self._invalid_cells:
-            self.show_status('Сначала исправьте ошибку в таблице')
+            self.show_status('Сначала исправьте ошибку в таблице', error=True)
             return
         if self._load_target is not None:
             kind, index = self._load_target
@@ -737,7 +744,7 @@ class PreprocessorPage(QWidget):
             return
         if self._invalid_cells:
             self._sync_support_value()
-            self.show_status('Сначала исправьте ошибку в таблице')
+            self.show_status('Сначала исправьте ошибку в таблице', error=True)
             return
         supports = list(self._model.supports)
         supports[index] = enabled
@@ -755,7 +762,7 @@ class PreprocessorPage(QWidget):
                 focused.clearFocus()
         if self._invalid_cells:
             (table, row, column), (text, error) = next(iter(self._invalid_cells.items()))
-            self.show_status(error)
+            self.show_status(error, error=True)
             self.dataTabs.setCurrentIndex((self.barsTable, self.nodesTable, self.loadsTable).index(table))
             table.setFocus()
             return False
@@ -780,7 +787,7 @@ class PreprocessorPage(QWidget):
         issues = validate_model(self._model)
         self.validateRequested.emit()
         if issues:
-            self.show_status('\n'.join(issue.message for issue in issues[:4]))
+            self.show_status('\n'.join(issue.message for issue in issues[:4]), error=True)
 
     def _refresh_numbers(self) -> None:
         '''Меняет только отображение чисел в таблицах и на схеме.'''

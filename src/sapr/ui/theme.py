@@ -29,6 +29,9 @@ class ThemeColors:
     border: str
     text: str
     muted: str
+    error_background: str
+    error_border: str
+    error_text: str
     accent: str
     accent_text: str
     accent_hover: str
@@ -60,6 +63,7 @@ class ThemeColors:
 LIGHT_COLORS = ThemeColors(
     window='#f5f6f8', panel='#ffffff', surface='#f0f3f6', border='#d5dde5',
     text='#202a36', muted='#5c6b7b', accent='#187f69', accent_text='#ffffff',
+    error_background='#fff2f2', error_border='#d96b6b', error_text='#9c2f2f',
     accent_hover='#116d59', accent_pressed='#0e5949', hover='#eaf0f4',
     pressed='#dfe8ee', selection='#e0f0eb', selection_text='#145c4b',
     input_background='#f8fafb', disabled='#8a95a1', alternate='#f8fafb',
@@ -73,6 +77,7 @@ LIGHT_COLORS = ThemeColors(
 DARK_COLORS = ThemeColors(
     window='#10151d', panel='#171f2a', surface='#121923', border='#2a3544',
     text='#e8edf5', muted='#9aa8b9', accent='#82d6bb', accent_text='#102c24',
+    error_background='#352126', error_border='#b86068', error_text='#ffb8be',
     accent_hover='#9ee4cc', accent_pressed='#64bda0', hover='#233042',
     pressed='#1b2735', selection='#233e39', selection_text='#b7eddb',
     input_background='#131c27', disabled='#627083', alternate='#1b2531',
