@@ -1,7 +1,7 @@
 '''Оформляет сообщения и ошибочный ввод независимо от выбранной темы.'''
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QLabel, QLineEdit, QWidget
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QWidget
 
 
 def _set_property(widget: QWidget, name: str, value: object) -> None:
@@ -17,6 +17,7 @@ def _set_property(widget: QWidget, name: str, value: object) -> None:
     widget.setProperty(name, value)
     widget.style().unpolish(widget)
     widget.style().polish(widget)
+    QApplication.sendEvent(widget, QEvent(QEvent.Type.StyleChange))
     widget.updateGeometry()
     widget.update()
 

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import QApplication
 from src.sapr.domain import Bar, StructuralModel, demo_model
 from src.sapr.domain.postprocessor import AxialPostprocessor
 from src.sapr.domain.processor import AxialProcessor
+from src.sapr.ui.feedback import show_feedback
 from src.sapr.ui.main_window import MainWindow, Page
 from src.sapr.ui.theme import ThemeManager, ThemeMode
 from src.sapr.ui.widgets.response_table import ResponseTableModel
@@ -72,6 +73,19 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.window.navigate(Page.POSTPROCESSOR)
         self._wait(lambda: self.window._postprocessor_task is None)
         self.assertIsNotNone(self.page.result)
+
+    def test_error_padding_updates_without_theme_switch(self):
+        '''Пересчитывает отступы сообщения сразу после смены его роли.'''
+        self._calculate()
+        self.window.show()
+        for label in (self.page.statusLabel, self.page.strengthLabel):
+            show_feedback(label, 'Данные доступны')
+            self.app.processEvents()
+            show_feedback(label, 'Превышение допуска', error=True)
+            self.app.processEvents()
+            self.assertGreater(label.contentsRect().left(), 0)
+            self.assertGreater(label.contentsRect().top(), 0)
+            self.assertGreater(label.sizeHint().height(), label.fontMetrics().height())
 
     def test_requires_current_successful_processor_result(self):
         '''Проверенные файлы сами по себе не заменяют рассчитанный вектор Delta.'''
