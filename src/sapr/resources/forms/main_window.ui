@@ -1,0 +1,315 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1440</width>
+    <height>870</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1180</width>
+    <height>840</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>САПР BAR - usatopolosato</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="rootLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QFrame" name="topBar">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>68</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>68</height>
+       </size>
+      </property>
+      <layout class="QHBoxLayout" name="topBarLayout">
+       <property name="leftMargin">
+        <number>28</number>
+       </property>
+       <property name="rightMargin">
+        <number>28</number>
+       </property>
+       <property name="spacing">
+        <number>16</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="brandLabel">
+         <property name="text">
+          <string>САПР BAR</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="breadcrumbLabel">
+         <property name="text">
+          <string>Начало работы</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>muted</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="topSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="versionBadge">
+         <property name="text">
+          <string>Прототип интерфейса</string>
+         </property>
+         <property name="role" stdset="0">
+          <string>eyebrow</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="bodyLayout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QFrame" name="sidebar">
+        <property name="minimumSize">
+         <size>
+          <width>208</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>208</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="sidebarLayout">
+         <property name="spacing">
+          <number>8</number>
+         </property>
+         <property name="leftMargin">
+          <number>16</number>
+         </property>
+         <property name="rightMargin">
+          <number>16</number>
+         </property>
+         <property name="topMargin">
+          <number>28</number>
+         </property>
+         <property name="bottomMargin">
+          <number>22</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="projectEyebrow">
+           <property name="text">
+            <string>ТЕКУЩИЙ ПРОЕКТ</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>eyebrow</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="sidebarProjectLabel">
+           <property name="text">
+            <string>Новый проект</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="role" stdset="0">
+            <string>cardTitle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="sidebarProjectGap">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="hubNavButton">
+           <property name="text">
+            <string>Обзор проекта</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="role" stdset="0">
+            <string>nav</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="preprocessorNavButton">
+           <property name="text">
+            <string>01   Препроцессор</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="role" stdset="0">
+            <string>nav</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="processorNavButton">
+           <property name="text">
+            <string>02   Процессор</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="role" stdset="0">
+            <string>nav</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="postprocessorNavButton">
+           <property name="text">
+            <string>03   Постпроцессор</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="role" stdset="0">
+            <string>nav</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="sidebarSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>200</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QLabel" name="sidebarModeLabel">
+           <property name="text">
+            <string>РАСТЯЖЕНИЕ И СЖАТИЕ</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>eyebrow</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="sidebarModeDescription">
+           <property name="text">
+            <string>Линейная статика
+Стержневая система</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>muted</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="sidebarHomeGap">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>18</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="homeButton">
+           <property name="text">
+            <string>На главный экран</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>secondary</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="authorLabel">
+           <property name="text">
+            <string>Автор usatopolosato</string>
+           </property>
+           <property name="role" stdset="0">
+            <string>author</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QStackedWidget" name="pageStack" />
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources />
+ <connections />
+</ui>

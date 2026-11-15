@@ -1,0 +1,648 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>ProjectHubPage</class>
+ <widget class="QWidget" name="ProjectHubPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>САПР - Модули проекта</string>
+  </property>
+  <layout class="QVBoxLayout" name="hubLayout">
+   <property name="spacing">
+    <number>24</number>
+   </property>
+   <property name="leftMargin">
+    <number>32</number>
+   </property>
+   <property name="topMargin">
+    <number>28</number>
+   </property>
+   <property name="rightMargin">
+    <number>32</number>
+   </property>
+   <property name="bottomMargin">
+    <number>28</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="hubHeadingLayout" stretch="1,0,0">
+     <item>
+      <layout class="QVBoxLayout" name="hubTitleLayout">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="hubEyebrowLabel">
+         <property name="role" stdset="0">
+          <string>eyebrow</string>
+         </property>
+         <property name="text">
+          <string>РАБОЧЕЕ ПРОСТРАНСТВО</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="projectNameLabel">
+         <property name="role" stdset="0">
+          <string>pageTitle</string>
+         </property>
+         <property name="text">
+          <string>Новый проект</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="hubDescriptionLabel">
+         <property name="role" stdset="0">
+          <string>muted</string>
+         </property>
+         <property name="text">
+          <string>Выберите модуль проекта</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="headingSpace">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+      </spacer>
+     </item>
+     <item alignment="Qt::AlignTop">
+      <widget class="QPushButton" name="returnButton">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="role" stdset="0">
+        <string>secondary</string>
+       </property>
+       <property name="text">
+        <string>На главный экран</string>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="hubTopSpace">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>16</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="moduleCardsLayout" stretch="1,1,1">
+     <property name="spacing">
+      <number>18</number>
+     </property>
+     <item>
+      <widget class="QFrame" name="preprocessorCard">
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>340</height>
+        </size>
+       </property>
+       <property name="role" stdset="0">
+        <string>card</string>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+       <layout class="QVBoxLayout" name="preprocessorCardLayout">
+        <property name="spacing">
+         <number>20</number>
+        </property>
+        <property name="leftMargin">
+         <number>24</number>
+        </property>
+        <property name="topMargin">
+         <number>24</number>
+        </property>
+        <property name="rightMargin">
+         <number>24</number>
+        </property>
+        <property name="bottomMargin">
+         <number>24</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="preprocessorNumberLayout">
+          <item>
+           <widget class="QLabel" name="preprocessorNumberLabel">
+            <property name="role" stdset="0">
+             <string>eyebrow</string>
+            </property>
+            <property name="text">
+             <string>Этап 1</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="preprocessorBadgeSpace">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item alignment="Qt::AlignTop">
+           <widget class="QLabel" name="preprocessorBadgeLabel">
+            <property name="role" stdset="0">
+             <string>badge</string>
+            </property>
+            <property name="text">
+             <string>Доступен</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="preprocessorTitleLabel">
+          <property name="role" stdset="0">
+           <string>cardTitle</string>
+          </property>
+          <property name="text">
+           <string>Препроцессор</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="preprocessorDescriptionLabel">
+          <property name="role" stdset="0">
+           <string>muted</string>
+          </property>
+          <property name="text">
+           <string>Геометрия конструкции
+Материалы и нагрузки
+Проверка исходных данных</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="preprocessorCardSpace">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>28</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="preprocessorButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="role" stdset="0">
+           <string>primary</string>
+          </property>
+          <property name="text">
+           <string>Открыть препроцессор</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="processorCard">
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>340</height>
+        </size>
+       </property>
+       <property name="role" stdset="0">
+        <string>card</string>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+       <layout class="QVBoxLayout" name="processorCardLayout">
+        <property name="spacing">
+         <number>20</number>
+        </property>
+        <property name="leftMargin">
+         <number>24</number>
+        </property>
+        <property name="topMargin">
+         <number>24</number>
+        </property>
+        <property name="rightMargin">
+         <number>24</number>
+        </property>
+        <property name="bottomMargin">
+         <number>24</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="processorNumberLayout">
+          <item>
+           <widget class="QLabel" name="processorNumberLabel">
+            <property name="role" stdset="0">
+             <string>eyebrow</string>
+            </property>
+            <property name="text">
+             <string>Этап 2</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="processorBadgeSpace">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item alignment="Qt::AlignTop">
+           <widget class="QLabel" name="processorBadgeLabel">
+            <property name="role" stdset="0">
+             <string>badge</string>
+            </property>
+            <property name="text">
+             <string>В разработке</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="processorTitleLabel">
+          <property name="role" stdset="0">
+           <string>cardTitle</string>
+          </property>
+          <property name="text">
+           <string>Процессор</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="processorDescriptionLabel">
+          <property name="role" stdset="0">
+           <string>muted</string>
+          </property>
+          <property name="text">
+           <string>Расчёт перемещений узлов конструкции</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="processorCardSpace">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>28</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="processorButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="role" stdset="0">
+           <string>secondary</string>
+          </property>
+          <property name="text">
+           <string>Посмотреть</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="postprocessorCard">
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>340</height>
+        </size>
+       </property>
+       <property name="role" stdset="0">
+        <string>card</string>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::NoFrame</enum>
+       </property>
+       <layout class="QVBoxLayout" name="postprocessorCardLayout">
+        <property name="spacing">
+         <number>20</number>
+        </property>
+        <property name="leftMargin">
+         <number>24</number>
+        </property>
+        <property name="topMargin">
+         <number>24</number>
+        </property>
+        <property name="rightMargin">
+         <number>24</number>
+        </property>
+        <property name="bottomMargin">
+         <number>24</number>
+        </property>
+        <item>
+         <layout class="QHBoxLayout" name="postprocessorNumberLayout">
+          <item>
+           <widget class="QLabel" name="postprocessorNumberLabel">
+            <property name="role" stdset="0">
+             <string>eyebrow</string>
+            </property>
+            <property name="text">
+             <string>Этап 3</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="postprocessorBadgeSpace">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item alignment="Qt::AlignTop">
+           <widget class="QLabel" name="postprocessorBadgeLabel">
+            <property name="role" stdset="0">
+             <string>badge</string>
+            </property>
+            <property name="text">
+             <string>В разработке</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="postprocessorTitleLabel">
+          <property name="role" stdset="0">
+           <string>cardTitle</string>
+          </property>
+          <property name="text">
+           <string>Постпроцессор</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="postprocessorDescriptionLabel">
+          <property name="role" stdset="0">
+           <string>muted</string>
+          </property>
+          <property name="text">
+           <string>Усилия напряжения и перемещения
+Таблицы эпюры и отчёт</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="postprocessorCardSpace">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>28</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="postprocessorButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="role" stdset="0">
+           <string>secondary</string>
+          </property>
+          <property name="text">
+           <string>Посмотреть</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QFrame" name="workflowCard">
+     <property name="role" stdset="0">
+      <string>card</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <layout class="QHBoxLayout" name="workflowLayout" stretch="1,1,1">
+      <property name="spacing">
+       <number>14</number>
+      </property>
+      <property name="leftMargin">
+       <number>24</number>
+      </property>
+      <property name="topMargin">
+       <number>22</number>
+      </property>
+      <property name="rightMargin">
+       <number>24</number>
+      </property>
+      <property name="bottomMargin">
+       <number>22</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="workflowFirstLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>Этап 1 - Исходные данные</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="workflowSecondLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>Этап 2 - Расчёт</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="workflowThirdLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>Этап 3 - Результаты</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="hubBottomSpace">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>30</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QLabel" name="previewNoticeLabel">
+     <property name="role" stdset="0">
+      <string>muted</string>
+     </property>
+     <property name="text">
+      <string>Доступен просмотр интерфейса препроцессора
+Расчётные модули в разработке</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>preprocessorButton</tabstop>
+  <tabstop>processorButton</tabstop>
+  <tabstop>postprocessorButton</tabstop>
+  <tabstop>returnButton</tabstop>
+ </tabstops>
+ <resources />
+ <connections />
+</ui>

@@ -1,0 +1,397 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>WelcomePage</class>
+ <widget class="QWidget" name="WelcomePage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>САПР - Начало работы</string>
+  </property>
+  <layout class="QHBoxLayout" name="welcomeLayout" stretch="3,2">
+   <property name="spacing">
+    <number>48</number>
+   </property>
+   <property name="leftMargin">
+    <number>50</number>
+   </property>
+   <property name="topMargin">
+    <number>40</number>
+   </property>
+   <property name="rightMargin">
+    <number>50</number>
+   </property>
+   <property name="bottomMargin">
+    <number>40</number>
+   </property>
+   <item>
+    <widget class="QWidget" name="heroPanel">
+     <layout class="QVBoxLayout" name="heroLayout">
+      <property name="spacing">
+       <number>20</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <spacer name="heroTopSpace">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>24</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="heroEyebrow">
+        <property name="role" stdset="0">
+         <string>eyebrow</string>
+        </property>
+        <property name="text">
+         <string>РАСЧЁТ СТЕРЖНЕВЫХ СИСТЕМ</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="heroTitleLabel">
+        <property name="role" stdset="0">
+         <string>heroTitle</string>
+        </property>
+        <property name="text">
+         <string>Расчёт стержневых
+систем</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="heroDescriptionLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>Растяжение и сжатие</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGraphicsView" name="welcomeStructureView">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>220</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>280</height>
+         </size>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="accessibleName">
+         <string>Иллюстрация стержневой конструкции</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="verticalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
+        </property>
+        <property name="interactive">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="heroFootnoteLayout" stretch="1,0,0">
+        <property name="spacing">
+         <number>14</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="workflowLabel">
+          <property name="role" stdset="0">
+           <string>muted</string>
+          </property>
+          <property name="text">
+           <string>Геометрия - Нагрузки - Результаты</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="heroFootnoteSpace">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="staticBadgeLabel">
+          <property name="role" stdset="0">
+           <string>badge</string>
+          </property>
+          <property name="text">
+           <string>Линейная статика</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="heroBottomSpace">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>24</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignVCenter">
+    <widget class="QFrame" name="startCard">
+     <property name="minimumSize">
+      <size>
+       <width>350</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>440</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="role" stdset="0">
+      <string>card</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <layout class="QVBoxLayout" name="startCardLayout">
+      <property name="spacing">
+       <number>18</number>
+      </property>
+      <property name="leftMargin">
+       <number>32</number>
+      </property>
+      <property name="topMargin">
+       <number>36</number>
+      </property>
+      <property name="rightMargin">
+       <number>32</number>
+      </property>
+      <property name="bottomMargin">
+       <number>28</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="startEyebrowLabel">
+        <property name="role" stdset="0">
+         <string>eyebrow</string>
+        </property>
+        <property name="text">
+         <string>НАЧАЛО РАБОТЫ</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="startTitleLabel">
+        <property name="role" stdset="0">
+         <string>cardTitle</string>
+        </property>
+        <property name="text">
+         <string>Работа с проектом</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="startDescriptionLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>Создайте проект или выберите существующий</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="startActionSpace">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>8</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="createProjectButton">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>54</height>
+         </size>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="role" stdset="0">
+         <string>primary</string>
+        </property>
+        <property name="text">
+         <string>Создать новый проект</string>
+        </property>
+        <property name="toolTip">
+         <string>Открыть рабочее пространство нового проекта</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="openProjectButton">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>54</height>
+         </size>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="role" stdset="0">
+         <string>secondary</string>
+        </property>
+        <property name="text">
+         <string>Выбрать проект</string>
+        </property>
+        <property name="toolTip">
+         <string>Выбрать существующий файл проекта</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="startFooterSpace">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>16</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QFrame" name="startSeparator">
+        <property name="frameShape">
+         <enum>QFrame::HLine</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="productDescriptionLabel">
+        <property name="role" stdset="0">
+         <string>muted</string>
+        </property>
+        <property name="text">
+         <string>САПР для стержневых систем</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="authorLabel">
+        <property name="role" stdset="0">
+         <string>eyebrow</string>
+        </property>
+        <property name="text">
+         <string>Автор usatopolosato</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>createProjectButton</tabstop>
+  <tabstop>openProjectButton</tabstop>
+ </tabstops>
+ <resources />
+ <connections />
+</ui>
