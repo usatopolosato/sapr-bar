@@ -163,24 +163,56 @@ def test_missing_or_tampered_prepared_data_is_not_validated(tmp_path):
     store = ProjectStore()
     project = store.save(store.create(tmp_path, 'Внутренние данные'), demo_model(), validate=True)
     derived = project.path / 'project.cnx'
-    data = json.loads(derived.read_text(encoding='utf-8'))
-    data['bars'][0]['area_m2'] = '42'
-    derived.write_text(json.dumps(data), encoding='utf-8')
+    data = derived.read_text(encoding='ascii').split()
+    data[0] = '42'
+    derived.write_text(' '.join(data), encoding='ascii')
     assert not store.load(project.path).validated
     derived.unlink()
     assert not store.load(project.path).validated
 
 
 @pytest.mark.parametrize('filename', ['project.cnx', 'project.ldx'])
-def test_boolean_version_cannot_impersonate_integer_version(tmp_path, filename):
-    '''JSON true не заменяет числовую версию внутреннего формата.'''
+def test_boolean_cannot_impersonate_integer_count(tmp_path, filename):
+    '''Логическое значение не заменяет целый размер числового массива.'''
     store = ProjectStore()
-    project = store.save(store.create(tmp_path, 'Типы JSON'), demo_model(), validate=True)
+    project = store.save(store.create(tmp_path, 'Типы полей'), demo_model(), validate=True)
     derived = project.path / filename
-    data = json.loads(derived.read_text(encoding='utf-8'))
-    data['version'] = True
-    derived.write_text(json.dumps(data), encoding='utf-8')
+    data = derived.read_text(encoding='ascii').split()
+    data[0] = 'true'
+    derived.write_text(' '.join(data), encoding='ascii')
     assert not store.load(project.path).validated
+
+
+def test_old_json_prepared_data_requires_a_new_check(tmp_path):
+    '''Старый проект открывает исходные данные и обновляется после проверки.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Старая версия'), demo_model(), validate=True)
+    manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+    manifest.pop('prepared_format')
+    project.project_file.write_text(json.dumps(manifest), encoding='utf-8')
+    for filename in ('project.cnx', 'project.ldx'):
+        (project.path / filename).write_text('{"version": 1, "units": "SI"}', encoding='utf-8')
+    original = {item.name: item.read_bytes() for item in project.path.iterdir()}
+    restored = store.load(project.path)
+    assert restored.model == project.model
+    assert not restored.validated
+    assert {item.name: item.read_bytes() for item in project.path.iterdir()} == original
+    checked = store.save(restored, restored.model, validate=True)
+    assert store.load(checked.path).validated
+    assert (checked.path / 'project.cnx').read_text(encoding='ascii').rstrip().endswith('CNX')
+    assert (checked.path / 'project.ldx').read_text(encoding='ascii').rstrip().endswith('LDX')
+    assert not (checked.path / 'project.mdx').exists()
+
+
+def test_prepared_numeric_layout_tolerates_whitespace_and_equivalent_numbers(tmp_path):
+    '''Статус проверки зависит от чисел и полей, а не от выравнивания текста.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Выравнивание'), demo_model(), validate=True)
+    for filename in ('project.cnx', 'project.ldx'):
+        derived = project.path / filename
+        text = derived.read_text(encoding='ascii').replace('0.0000000000000000e+00', '0.0')
+        derived.write_text('\n\t'.join(text.split()), encoding='ascii')
+    assert store.load(project.path).validated
 
 
 @pytest.mark.parametrize('name', ['..', '../outside', 'CON', 'LPT1.txt', 'bad/name', 'name.', ' name'])

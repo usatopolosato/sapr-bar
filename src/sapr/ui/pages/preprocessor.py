@@ -88,6 +88,8 @@ class PreprocessorPage(QWidget):
             splitter.setStretchFactor(0, 1)
         self.workspaceSplitter.setSizes([800, 310])
         self.modelSplitter.setSizes([320, 290])
+        self.dataLayout.removeWidget(self.dataActions)
+        self.dataTabs.setCornerWidget(self.dataActions, Qt.Corner.TopRightCorner)
         for tabs in (self.dataTabs, self.inspectorTabs):
             tabs.tabBar().setDrawBase(False)
         for table in (self.barsTable, self.nodesTable, self.loadsTable):
@@ -118,6 +120,7 @@ class PreprocessorPage(QWidget):
         self.nodesTable.currentCellChanged.connect(self._table_node_selected)
         self.loadsTable.itemChanged.connect(self._load_cell_changed)
         self.loadsTable.currentCellChanged.connect(self._table_load_selected)
+        self.dataTabs.currentChanged.connect(self._show_data_editor)
         self.structure_view.barSelected.connect(self._select_bar)
         self._refresh()
 
@@ -138,6 +141,7 @@ class PreprocessorPage(QWidget):
         self._load_target = None
         self._support_node = 0
         self._invalid_cells.clear()
+        self.inspectorTabs.setCurrentIndex(0)
         for field in self._bar_fields:
             field.setModified(False)
         self.loadValueInput.setModified(False)
@@ -229,6 +233,8 @@ class PreprocessorPage(QWidget):
         '''Обновляет представления, сохраняя ещё не применённый ввод.'''
         self._updating = True
         count = len(self._model.bars)
+        self.dataCard.setVisible(bool(count))
+        self.canvasCard.setMinimumHeight(180 if self._narrow and not count else 275)
         self.barsTable.setRowCount(count)
         for row, bar in enumerate(self._model.bars):
             self._cell(self.barsTable, row, 0, f'{row + 1:02d}')
@@ -256,9 +262,9 @@ class PreprocessorPage(QWidget):
         self.dataTabs.setTabText(1, f'Узлы {len(coordinates)}')
         self.dataTabs.setTabText(2, f'Нагрузки {len(self._load_rows)}')
         self._refresh_support_nodes()
-        self.removeBarButton.setEnabled(self._selected_bar >= 0)
         if not self._adding_bar and not any(field.isModified() for field in self._bar_fields):
             self._fill_bar_fields()
+        self._update_bar_actions()
         self.structure_view.set_model(self._model)
         self.structure_view.set_number_format(self.numberFormatCombo.currentIndex() == 1)
         if self._selected_bar >= 0:
@@ -276,14 +282,24 @@ class PreprocessorPage(QWidget):
     def _fill_bar_fields(self) -> None:
         '''Показывает исходные значения выбранного стержня без округления.'''
         valid = 0 <= self._selected_bar < len(self._model.bars)
-        self.selectedBarLabel.setText(f'Стержень {self._selected_bar + 1:02d}' if valid else 'Нет стержней')
-        self.applyBarButton.setText('Применить')
-        self.applyBarButton.setEnabled(valid)
-        self.cancelBarButton.setEnabled(valid)
+        self._adding_bar = not valid
+        self.selectedBarLabel.setText(f'Стержень {self._selected_bar + 1:02d}' if valid else 'Новый стержень')
         for field, attribute in zip(self._bar_fields, self._bar_attributes):
-            field.setEnabled(valid)
+            field.setEnabled(True)
             field.setText(str(getattr(self._model.bars[self._selected_bar], attribute)) if valid else '')
             field.setModified(False)
+        self._update_bar_actions()
+
+    def _update_bar_actions(self) -> None:
+        '''Согласует добавление в таблице и действия редактора стержня.'''
+        creating = self._adding_bar
+        self.addBarButton.setEnabled(not creating)
+        self.removeBarButton.setVisible(not creating)
+        self.removeBarButton.setEnabled(self._selected_bar >= 0 and not creating)
+        self.applyBarButton.setText('Добавить' if creating else 'Применить')
+        self.applyBarButton.setEnabled(True)
+        self.cancelBarButton.setText('Очистить' if creating and not self._model.bars else 'Отменить')
+        self.cancelBarButton.setEnabled(True)
 
     def _publish(self, model: StructuralModel) -> None:
         '''Публикует изменённую модель и обновляет интерфейс.
@@ -304,10 +320,9 @@ class PreprocessorPage(QWidget):
             return
         self._adding_bar = True
         self.inspectorTabs.setCurrentIndex(0)
+        self.dataTabs.setCurrentIndex(0)
         self.selectedBarLabel.setText('Новый стержень')
-        self.applyBarButton.setText('Добавить')
-        self.applyBarButton.setEnabled(True)
-        self.cancelBarButton.setEnabled(True)
+        self._update_bar_actions()
         for field in self._bar_fields:
             field.setEnabled(True)
             field.clear()
@@ -411,6 +426,7 @@ class PreprocessorPage(QWidget):
         if index == self._selected_bar and any(field.isModified() for field in self._bar_fields):
             return
         self._selected_bar = index
+        self.inspectorTabs.setCurrentIndex(0)
         self._updating = True
         self.barsTable.selectRow(index)
         self.structure_view.select_bar(index)
@@ -428,6 +444,15 @@ class PreprocessorPage(QWidget):
             previous_column: Предыдущий столбец.
         '''
         self._select_bar(row)
+
+    def _show_data_editor(self, index: int) -> None:
+        '''Открывает редактор выбранного вида исходных данных.
+
+        Args:
+            index: Вкладка стержней, узлов или нагрузок.
+        '''
+        if 0 <= index < 3:
+            self.inspectorTabs.setCurrentIndex((0, 2, 1)[index])
 
     def _bar_cell_changed(self, item: QTableWidgetItem) -> None:
         '''Применяет правку параметра или погонной нагрузки в таблице.
@@ -723,7 +748,10 @@ class PreprocessorPage(QWidget):
             self.dataTabs.setCurrentIndex((self.barsTable, self.nodesTable, self.loadsTable).index(table))
             table.setFocus()
             return False
-        if (self._adding_bar or any(field.isModified() for field in self._bar_fields)) and not self._apply_bar():
+        pending_bar = any(field.isModified() for field in self._bar_fields)
+        if self._adding_bar:
+            pending_bar = any(field.text().strip() for field in self._bar_fields)
+        if pending_bar and not self._apply_bar():
             return False
         if self.loadValueInput.isModified() and not self._apply_load():
             return False
@@ -760,6 +788,7 @@ class PreprocessorPage(QWidget):
         if self._narrow == narrow:
             return
         self._narrow = narrow
+        self.canvasCard.setMinimumHeight(180 if narrow and not self._model.bars else 275)
         margin = 12 if narrow else 20
         self.pageLayout.setContentsMargins(margin, margin, margin, margin)
         self.workspaceSplitter.setOrientation(Qt.Orientation.Vertical if narrow else Qt.Orientation.Horizontal)
@@ -778,3 +807,13 @@ class PreprocessorPage(QWidget):
         self.inspectorCard.layout().activate()
         self.inspectorCard.updateGeometry()
         self.workspaceSplitter.setSizes([max(250, self.height() - 270), 210] if narrow else [max(500, self.width() - 350), 310])
+
+    def showEvent(self, event) -> None:
+        '''Показывает форму первого стержня при открытии пустого проекта.
+
+        Args:
+            event: Событие появления страницы на экране.
+        '''
+        super().showEvent(event)
+        if self._narrow and not self._model.bars:
+            self._reveal_timer.start(0)

@@ -279,6 +279,60 @@
         <string>card</string>
        </property>
        <layout class="QVBoxLayout" name="dataLayout">
+        <item alignment="Qt::AlignRight">
+         <widget class="QWidget" name="dataActions">
+          <layout class="QHBoxLayout" name="dataActionsLayout">
+           <property name="leftMargin">
+            <number>8</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <item>
+            <widget class="QComboBox" name="numberFormatCombo">
+             <property name="currentIndex">
+              <number>1</number>
+             </property>
+             <item>
+              <property name="text">
+               <string>Точно</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Кратко</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="addBarButton">
+             <property name="text">
+              <string>Добавить стержень</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>tool</string>
+             </property>
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+             <property name="toolTip">
+              <string>Добавить стержень в конец конструкции</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
         <property name="leftMargin">
          <number>12</number>
         </property>
@@ -295,84 +349,9 @@
          <number>6</number>
         </property>
         <item>
-         <layout class="QHBoxLayout" name="dataToolbarLayout">
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <property name="spacing">
-           <number>6</number>
-          </property>
-          <item>
-           <widget class="QPushButton" name="addBarButton">
-            <property name="text">
-             <string>Добавить стержень</string>
-            </property>
-            <property name="role" stdset="0">
-             <string>tool</string>
-            </property>
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="removeBarButton">
-            <property name="text">
-             <string>Удалить</string>
-            </property>
-            <property name="role" stdset="0">
-             <string>tool</string>
-            </property>
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="dataSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint">
-             <size>
-              <width>8</width>
-              <height>8</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QComboBox" name="numberFormatCombo">
-            <item>
-             <property name="text">
-              <string>Точно</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Кратко</string>
-             </property>
-            </item>
-            <property name="currentIndex">
-             <number>1</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
          <widget class="QTabWidget" name="dataTabs">
           <property name="documentMode">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <widget class="QWidget" name="barsTab">
            <attribute name="title">
@@ -845,6 +824,19 @@
               </widget>
              </item>
             </layout>
+           </item>
+           <item>
+            <widget class="QPushButton" name="removeBarButton">
+             <property name="text">
+              <string>Удалить стержень</string>
+             </property>
+             <property name="role" stdset="0">
+              <string>tool</string>
+             </property>
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+            </widget>
            </item>
            <item>
             <spacer name="barBottomSpacer">

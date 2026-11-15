@@ -9,7 +9,8 @@ import shutil
 import tempfile
 
 from ..domain import ModelValidationError, StructuralModel, validate_model
-from .formats import ProjectFormatError, decode_sources, decimal_text, encode_sources
+from .formats import ProjectFormatError, decode_sources, encode_sources
+from .processed_formats import PROCESSED_FORMAT, encode_processed, processed_matches
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,8 @@ class Project:
 class ProjectStore:
     '''Сохраняет внешний формат и формирует внутренний после диагностики.
 
-    KPR, CNX и LDX используют собственный формат JSON версии 1.
+    KPR использует собственный формат JSON версии 1.
+    CNX и LDX содержат числовые массивы по структуре САПР BAR.
     Внешние CN и LD содержат осевое подмножество массивов из лекции.
     Поля ND и NM равны нулю, дополнительные задачи не поддерживаются.
     '''
@@ -114,9 +116,10 @@ class ProjectStore:
         }
         contents = dict(sources)
         if passed:
-            cnx, ldx = self._prepared_data(model)
-            contents['project.cnx'] = self._json_bytes(cnx)
-            contents['project.ldx'] = self._json_bytes(ldx)
+            cnx, ldx = encode_processed(model)
+            contents['project.cnx'] = cnx.encode('ascii')
+            contents['project.ldx'] = ldx.encode('ascii')
+            manifest['prepared_format'] = PROCESSED_FORMAT
         contents['project.kpr'] = self._json_bytes(manifest)
         self._write_transaction(folder, contents)
         if issues:
@@ -153,9 +156,11 @@ class ProjectStore:
         except UnicodeDecodeError as error:
             raise ProjectFormatError('Файлы исходных данных должны использовать UTF-8') from error
         hashes = {key: sha256(value).hexdigest() for key, value in sources.items()}
-        validated = manifest['validated'] and hashes == manifest.get('sources') and not validate_model(model)
+        validated = (manifest['validated'] and hashes == manifest.get('sources')
+                     and manifest.get('prepared_format') == PROCESSED_FORMAT
+                     and not validate_model(model))
         if validated:
-            expected_cnx, expected_ldx = self._prepared_data(model)
+            expected_cnx, expected_ldx = encode_processed(model)
             try:
                 validated = self._prepared_matches(folder / 'project.cnx', expected_cnx)
                 validated = validated and self._prepared_matches(folder / 'project.ldx', expected_ldx)
@@ -180,31 +185,6 @@ class ProjectStore:
         '''Кодирует версионируемую структуру в UTF-8 без округления чисел.'''
         return (json.dumps(value, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
 
-    @staticmethod
-    def _prepared_data(model: StructuralModel) -> tuple[dict, dict]:
-        '''Формирует самостоятельные входные массивы будущего процессора.'''
-        construction = {
-            'format': 'sapr-bar-construction', 'version': 1, 'units': 'SI',
-            'nodes_m': [decimal_text(value) for value in model.node_positions_m],
-            'bars': [
-                {
-                    'start_node': index + 1, 'end_node': index + 2,
-                    'length_m': decimal_text(bar.length_m),
-                    'area_m2': decimal_text(bar.area_m2),
-                    'modulus_pa': decimal_text(bar.modulus_pa),
-                    'allowable_stress_pa': decimal_text(bar.allowable_stress_pa),
-                }
-                for index, bar in enumerate(model.bars)
-            ],
-        }
-        loading = {
-            'format': 'sapr-bar-loads', 'version': 1, 'units': 'SI',
-            'supports': [index + 1 for index, enabled in enumerate(model.supports) if enabled],
-            'nodal_forces_n': [decimal_text(value) for value in model.nodal_forces],
-            'distributed_loads_n_m': [decimal_text(value) for value in model.distributed_loads],
-        }
-        return construction, loading
-
     def _read_bytes(self, path: Path) -> bytes:
         '''Читает ограниченный по размеру обычный файл проекта.'''
         if path.is_symlink():
@@ -225,10 +205,13 @@ class ProjectStore:
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ProjectFormatError(f'Файл {path.name} содержит некорректный JSON') from error
 
-    def _prepared_matches(self, path: Path, expected: dict) -> bool:
-        '''Сравнивает внутренние данные с различением чисел и логических значений.'''
-        actual = self._read_json(path)
-        return json.dumps(actual, sort_keys=True) == json.dumps(expected, sort_keys=True)
+    def _prepared_matches(self, path: Path, expected: str) -> bool:
+        '''Сравнивает числовые обработанные данные с текущей моделью.'''
+        try:
+            actual = self._read_bytes(path).decode('ascii')
+        except UnicodeDecodeError:
+            return False
+        return processed_matches(actual, expected)
 
     def _write_transaction(self, folder: Path, contents: dict[str, bytes]) -> None:
         '''Заменяет известные файлы с откатом при ошибке ввода вывода.'''

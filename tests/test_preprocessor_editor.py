@@ -49,7 +49,8 @@ class PreprocessorEditorTests(unittest.TestCase):
     def test_add_to_empty_model_creates_two_nodes(self) -> None:
         '''Проверяет создание первого стержня и начальных нагрузок.'''
         self.page.set_model(StructuralModel())
-        self.page.addBarButton.click()
+        self.assertTrue(self.page.lengthInput.isEnabled())
+        self.assertEqual(self.page.applyBarButton.text(), 'Добавить')
         for field, value in zip(self.page._bar_fields, ('2', '1e-3', '2e11', '1e8')):
             field.setText(value)
         self.page.applyBarButton.click()
@@ -57,6 +58,44 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.assertEqual(self.page.model.node_positions_m, (Decimal('0'), Decimal('2')))
         self.assertEqual(self.page.model.nodal_forces, (Decimal('0'), Decimal('0')))
         self.assertEqual(self.page.model.supports, (False, False))
+
+    def test_empty_first_bar_form_saves_draft_and_partial_form_requires_completion(self) -> None:
+        '''Отличает пустую начальную форму от незавершённого ввода стержня.'''
+        self.page.set_model(StructuralModel())
+        saved = []
+        self.page.saveRequested.connect(lambda: saved.append(True))
+        self.assertTrue(self.page.commit_pending_edits())
+        self.page.saveProjectButton.click()
+        self.assertEqual(saved, [True])
+        self.page.lengthInput.setText('2')
+        self.page.lengthInput.setModified(True)
+        self.page.saveProjectButton.click()
+        self.assertEqual(saved, [True])
+        self.assertEqual(self.page.lengthInput.text(), '2')
+        self.page.cancelBarButton.click()
+        self.assertTrue(self.page.commit_pending_edits())
+        self.assertEqual(self.page.lengthInput.text(), '')
+        self.assertEqual(self.page.model, StructuralModel())
+
+    def test_new_bar_action_keeps_creation_and_editing_in_one_editor(self) -> None:
+        '''Переключает один редактор между новым и выбранным стержнем.'''
+        original = self.page.model
+        self.page.resize(1200, 800)
+        self.page.show()
+        self.app.processEvents()
+        self.assertTrue(self.page.addBarButton.isVisible())
+        self.page.addBarButton.click()
+        self.assertTrue(self.page.addBarButton.isVisible())
+        self.assertFalse(self.page.addBarButton.isEnabled())
+        self.assertFalse(self.page.removeBarButton.isVisible())
+        self.assertEqual(self.page.applyBarButton.text(), 'Добавить')
+        self.assertTrue(self.page.commit_pending_edits())
+        self.page.cancelBarButton.click()
+        self.assertTrue(self.page.addBarButton.isVisible())
+        self.assertTrue(self.page.addBarButton.isEnabled())
+        self.assertTrue(self.page.removeBarButton.isVisible())
+        self.assertEqual(self.page.applyBarButton.text(), 'Применить')
+        self.assertEqual(self.page.model, original)
 
     def test_invalid_table_value_blocks_save_until_corrected(self) -> None:
         '''Не позволяет сохранить старое значение вместо ошибочного ввода.'''

@@ -77,6 +77,29 @@ class ProjectWorkflowTests(unittest.TestCase):
         self.assertFalse((self.project.path / 'project.cnx').exists())
         self.assertFalse((self.project.path / 'project.ldx').exists())
 
+    def test_successful_check_writes_numeric_processed_files(self) -> None:
+        '''Проверяет формирование числовых файлов действием Проверить.'''
+        project = self.store.create(self.root, 'Проверка подготовки')
+        self.window._activate_project(project)
+        self.page.set_model(demo_model())
+        self.page.validateButton.click()
+        for extension in ('cnx', 'ldx'):
+            text = (project.path / f'project.{extension}').read_text(encoding='ascii')
+            self.assertEqual(text.splitlines()[-1], extension.upper())
+            self.assertFalse(text.lstrip().startswith('{'))
+        self.assertTrue(self.store.load(project.path).validated)
+        self.assertFalse((project.path / 'project.mdx').exists())
+
+    def test_failed_check_leaves_only_source_files(self) -> None:
+        '''Проверяет отсутствие обработанных файлов для пустой модели.'''
+        project = self.store.create(self.root, 'Пустая модель')
+        self.window._activate_project(project)
+        self.page.validateButton.click()
+        self.assertFalse((project.path / 'project.cnx').exists())
+        self.assertFalse((project.path / 'project.ldx').exists())
+        self.assertFalse((project.path / 'project.mdx').exists())
+        self.assertFalse(self.store.load(project.path).validated)
+
     def test_opened_long_decimal_is_not_truncated_in_inspector(self) -> None:
         '''Проверяет открытие и повторное применение длинного значения файла.'''
         from dataclasses import replace
