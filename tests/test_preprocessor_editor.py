@@ -220,18 +220,18 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.assertEqual(self.page.barsTable.item(0, 1).text(), 'ошибка')
 
     def test_validation_does_not_block_draft_saving(self) -> None:
-        '''Разрешает сохранять неполную модель без файлов для процессора.'''
+        '''Передаёт на проверку неполную модель и разрешает сохранить черновик.'''
         self.page.set_model(StructuralModel())
-        saved, checked = [], []
+        saved, requested = [], []
         self.page.saveRequested.connect(lambda: saved.append(True))
-        self.page.validateRequested.connect(lambda: checked.append(True))
+        self.page.validateRequested.connect(lambda: requested.append(True))
         self.page.validateButton.click()
-        self.assertEqual(checked, [])
+        self.assertEqual(requested, [True])
         self.page.saveProjectButton.click()
         self.assertEqual(saved, [True])
         self.page.set_model(demo_model())
         self.page.validateButton.click()
-        self.assertEqual(checked, [True])
+        self.assertEqual(requested, [True, True])
 
     def test_nonfinite_and_extreme_numbers_are_rejected(self) -> None:
         '''Отсекает NaN и бесконечность до передачи модели в схему.'''

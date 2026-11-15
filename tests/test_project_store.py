@@ -215,6 +215,57 @@ def test_prepared_numeric_layout_tolerates_whitespace_and_equivalent_numbers(tmp
     assert store.load(project.path).validated
 
 
+def test_old_numeric_prepared_data_is_rebuilt_only_after_a_successful_check(tmp_path):
+    '''Открывает полный числовой формат без правок и заменяет его после диагностики.'''
+    store = ProjectStore()
+    model = StructuralModel(
+        bars=(Bar(Decimal('1'), Decimal('0.001'), Decimal('2e11'), Decimal('1e8')),),
+        nodal_forces=(Decimal('0'), Decimal('100')),
+        distributed_loads=(Decimal('20'),),
+        supports=(True, False),
+    )
+    project = store.save(store.create(tmp_path, 'Прежние массивы'), model, validate=True)
+    old_construction = '''2 1 1 0 0
+1 2
+1 2
+0 0
+1 0
+1 2 1
+1 2e11 0 0
+0 0.001
+0 0
+0
+1e8 1e8
+0 0
+0 0 0
+CNX
+'''
+    old_loading = '''1 1 1 0
+1 1 1 1 0 0 0
+2 100 0 0
+1 20 0 0 0
+LDX
+'''
+    (project.path / 'project.cnx').write_text(old_construction, encoding='ascii')
+    (project.path / 'project.ldx').write_text(old_loading, encoding='ascii')
+    manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+    manifest['prepared_format'] = 'sapr-bar-numeric-axial-v1'
+    project.project_file.write_text(json.dumps(manifest), encoding='utf-8')
+    original = {item.name: item.read_bytes() for item in project.path.iterdir()}
+    restored = store.load(project.path)
+    assert restored.model == model
+    assert not restored.validated
+    assert {item.name: item.read_bytes() for item in project.path.iterdir()} == original
+    saved = store.save(restored, restored.model, validate=True)
+    assert store.load(saved.path) == saved
+    assert saved.validated
+    assert json.loads(saved.project_file.read_text(encoding='utf-8'))['prepared_format'] == 'sapr-bar-numeric-axial-v2'
+    cnx = (saved.path / 'project.cnx').read_text(encoding='ascii').split()
+    ldx = (saved.path / 'project.ldx').read_text(encoding='ascii').split()
+    assert cnx[:3] == ['2', '1', '1'] and len(cnx) == 15
+    assert ldx[:3] == ['1', '1', '1'] and len(ldx) == 9
+
+
 @pytest.mark.parametrize('name', ['..', '../outside', 'CON', 'LPT1.txt', 'bad/name', 'name.', ' name'])
 def test_project_name_cannot_escape_or_use_reserved_names(tmp_path, name):
     '''Недопустимые имена отклоняются до создания папки.'''

@@ -1,9 +1,8 @@
-'''Формирует числовые файлы CNX и LDX по структуре САПР BAR.
+'''Формирует сокращённые числовые файлы CNX и LDX для осевой задачи.
 
-Осевая цепочка сохраняет исходную нумерацию узлов. В CNX каждый тип сечения
-содержит одиннадцать характеристик XC и следующие за ними пять величин SC.
-В осевой модели ISC и SC равны нулю. Сдвиг, шарниры, сосредоточенные массы и временная
-зависимость нагрузок не входят в текущую постановку задачи.
+Массивы следуют порядку исходных CN и LD. CNX содержит координаты,
+связи стержней и четыре характеристики E A Sp Sc. LDX содержит номера
+закреплённых узлов, узловые силы F и погонные нагрузки q.
 '''
 
 from decimal import Decimal, InvalidOperation
@@ -13,7 +12,7 @@ from ..domain import ModelValidationError, StructuralModel, validate_model
 from .formats import decimal_text
 
 
-PROCESSED_FORMAT = 'sapr-bar-numeric-axial-v1'
+PROCESSED_FORMAT = 'sapr-bar-numeric-axial-v2'
 NUMBER_PATTERN = re.compile(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z')
 INTEGER_PATTERN = re.compile(r'[+-]?\d+\Z')
 ZERO = Decimal('0')
@@ -47,11 +46,6 @@ def _indices(values: tuple[int, ...]) -> str:
     return ' '.join(f'{value:4d}' for value in values)
 
 
-def _permutation(count: int) -> list[str]:
-    '''Размещает тождественную перестановку узлов по шестнадцать чисел в строке.'''
-    return [_indices(tuple(range(start, min(start + 16, count + 1)))) for start in range(1, count + 1, 16)]
-
-
 def encode_processed(model: StructuralModel) -> tuple[str, str]:
     '''Формирует проверенные числовые массивы конструкции и нагрузок.
 
@@ -69,36 +63,26 @@ def encode_processed(model: StructuralModel) -> tuple[str, str]:
         raise ModelValidationError(issues)
     count = len(model.bars)
     nodes = count + 1
-    construction = ['', _indices((nodes, count, count, 0, 0)), '']
-    construction.extend(_permutation(nodes))
-    construction.append('')
-    construction.extend(_permutation(nodes))
-    construction.append('')
+    construction = ['', _indices((nodes, count, count)), '']
     construction.extend(_numbers((position, ZERO)) for position in model.node_positions_m)
     construction.append('')
     construction.extend(_indices((index + 1, index + 2, index + 1)) for index in range(count))
     construction.append('')
-    for bar in model.bars:
-        construction.extend((
-            f'{1:5d} ' + _numbers((bar.modulus_pa, ZERO, ZERO)),
-            '      ' + _numbers((ZERO, bar.area_m2)),
-            '      ' + _numbers((ZERO, ZERO)),
-            '      ' + _numbers((ZERO,)),
-            '      ' + _numbers((bar.allowable_stress_pa, bar.allowable_stress_pa)),
-            _numbers((ZERO, ZERO)),
-            _numbers((ZERO, ZERO, ZERO)),
-        ))
+    construction.extend(
+        _numbers((bar.modulus_pa, bar.area_m2, bar.allowable_stress_pa, bar.allowable_stress_pa))
+        for bar in model.bars
+    )
     construction.extend(('', 'CNX', ''))
 
     supports = [index + 1 for index, enabled in enumerate(model.supports) if enabled]
     forces = [(index + 1, value) for index, value in enumerate(model.nodal_forces) if value]
     loads = [(index + 1, value) for index, value in enumerate(model.distributed_loads) if value]
-    loading = ['', _indices((len(supports), len(forces), len(loads), 0)), '']
-    loading.extend(_indices((node, 1, 1, 1)) + ' ' + _numbers((ZERO, ZERO, ZERO)) for node in supports)
+    loading = ['', _indices((len(supports), len(forces), len(loads))), '']
+    loading.extend(_indices((node,)) for node in supports)
     loading.append('')
-    loading.extend(f'{node:5d} ' + _numbers((value, ZERO, ZERO)) for node, value in forces)
+    loading.extend(f'{node:5d} ' + _numbers((value,)) for node, value in forces)
     loading.append('')
-    loading.extend(f'{bar:5d} ' + _numbers((value, ZERO, ZERO, ZERO)) for bar, value in loads)
+    loading.extend(f'{bar:5d} ' + _numbers((value,)) for bar, value in loads)
     loading.extend(('', 'LDX', ''))
     return '\n'.join(construction), '\n'.join(loading)
 

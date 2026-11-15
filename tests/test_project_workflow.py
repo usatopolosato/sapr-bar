@@ -100,6 +100,21 @@ class ProjectWorkflowTests(unittest.TestCase):
         self.assertFalse((project.path / 'project.mdx').exists())
         self.assertFalse(self.store.load(project.path).validated)
 
+    def test_failed_recheck_removes_previous_prepared_files(self) -> None:
+        '''Не оставляет старые обработанные файлы после отказа повторной проверки.'''
+        self.page.supportNodeCombo.setCurrentIndex(0)
+        self.page.freeSupportButton.click()
+        self.page.validateButton.click()
+        restored = self.store.load(self.project.path)
+        self.assertEqual(restored.model, self.page.model)
+        self.assertFalse(any(restored.model.supports))
+        self.assertFalse(restored.validated)
+        self.assertFalse(self.window.current_project.validated)
+        self.assertFalse(self.window._dirty)
+        self.assertFalse((self.project.path / 'project.cnx').exists())
+        self.assertFalse((self.project.path / 'project.ldx').exists())
+        self.assertIn('Задайте хотя бы одну жёсткую опору', self.page.statusLabel.text())
+
     def test_opened_long_decimal_is_not_truncated_in_inspector(self) -> None:
         '''Проверяет открытие и повторное применение длинного значения файла.'''
         from dataclasses import replace

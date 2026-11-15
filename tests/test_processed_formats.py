@@ -6,14 +6,12 @@ from decimal import Decimal, localcontext
 import pytest
 
 from src.sapr.domain import Bar, ModelValidationError, StructuralModel
+from src.sapr.storage.formats import encode_sources
 from src.sapr.storage.processed_formats import encode_processed, processed_matches, scientific_text
 
 
 REFERENCE_CNX = '''
-3 2 2 0 0
-
-1 2 3
-1 2 3
+3 2 2
 
 0 0
 1.25 0
@@ -22,37 +20,24 @@ REFERENCE_CNX = '''
 1 2 1
 2 3 2
 
-1 2e11 0 0
-0 0.001
-0 0
-0
-1.5e8 1.5e8
-0 0
-0 0 0
-
-1 3e11 0 0
-0 0.002
-0 0
-0
-2.4e8 2.4e8
-0 0
-0 0 0
+2e11 0.001 1.5e8 1.5e8
+3e11 0.002 2.4e8 2.4e8
 
 CNX
 '''
 
 
 REFERENCE_LDX = '''
-2 2 2 0
+2 2 2
 
-1 1 1 1 0 0 0
-3 1 1 1 0 0 0
+1
+3
 
-2 -1250 0 0
-3 2000 0 0
+2 -1250
+3 2000
 
-1 1000 0 0 0
-2 -250 0 0 0
+1 1000
+2 -250
 
 LDX
 '''
@@ -72,8 +57,8 @@ def two_bars():
     )
 
 
-def test_two_sections_match_independent_original_layout(two_bars):
-    '''Два разных типа сечения сохраняют порядок XC11 и SC5 внутри каждого типа.'''
+def test_two_sections_match_independent_compact_layout(two_bars):
+    '''Числовые файлы содержат только координаты, связи, свойства и осевые воздействия.'''
     for actual, expected, tag in zip(encode_processed(two_bars), (REFERENCE_CNX, REFERENCE_LDX), ('CNX', 'LDX')):
         actual_tokens = actual.split()
         expected_tokens = expected.split()
@@ -84,15 +69,31 @@ def test_two_sections_match_independent_original_layout(two_bars):
         assert actual.endswith(f'{tag}\n')
 
 
+def test_processed_fields_follow_compact_source_fields(two_bars):
+    '''Обработанные массивы повторяют значения CN и LD без нумерации строк разметки.'''
+    sources = encode_sources('Проверка состава', two_bars)
+    for source, processed in zip(sources, encode_processed(two_bars)):
+        source_values = []
+        for line in source.splitlines()[1:]:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('*'):
+                continue
+            tokens = stripped.split()
+            if stripped.startswith('='):
+                tokens = tokens[1:]
+            source_values.extend(Decimal(token) for token in tokens)
+        assert [Decimal(token) for token in processed.split()[:-1]] == source_values
+
+
 def test_empty_load_arrays_keep_their_zero_counts(two_bars):
-    '''Нулевые воздействия не создают записей QR и QS, время не используется.'''
+    '''Нулевые воздействия оставляют только три счётчика и номера закреплённых узлов.'''
     model = replace(two_bars, nodal_forces=(Decimal('0'),) * 3, distributed_loads=(Decimal('0'),) * 2)
     _, loading = encode_processed(model)
     rows = [row.split() for row in loading.splitlines() if row.strip()]
-    assert rows[0] == ['2', '0', '0', '0']
+    assert rows[0] == ['2', '0', '0']
     assert len(rows) == 4
-    assert rows[1][:4] == ['1', '1', '1', '1']
-    assert rows[2][:4] == ['3', '1', '1', '1']
+    assert rows[1] == ['1']
+    assert rows[2] == ['3']
     assert rows[-1] == ['LDX']
 
 
@@ -100,12 +101,12 @@ def test_interior_support_retains_original_node_number(two_bars):
     '''Закрепление внутреннего узла входит в NB с исходным номером.'''
     _, loading = encode_processed(replace(two_bars, supports=(False, True, False)))
     rows = [row.split() for row in loading.splitlines() if row.strip()]
-    assert rows[0] == ['1', '2', '2', '0']
-    assert rows[1][:4] == ['2', '1', '1', '1']
+    assert rows[0] == ['1', '2', '2']
+    assert rows[1] == ['2']
 
 
 @pytest.mark.parametrize('value', ['0', '-0', '0E-500', '-0.000'])
-def test_zero_has_original_canonical_exponent(value):
+def test_zero_has_canonical_exponent(value):
     '''Любой ноль получает одинаковую мантиссу и нулевой порядок.'''
     assert scientific_text(Decimal(value)) == '0.0000000000000000e+00'
 
@@ -138,14 +139,17 @@ def test_coordinate_and_load_precision_survive_low_decimal_context(two_bars):
             replace(two_bars.bars[1], length_m=Decimal('0.00000000000000123456789012345')),
         ),
         nodal_forces=(Decimal('0'), Decimal('-1.23456789012345678901234567890'), Decimal('2000')),
+        distributed_loads=(Decimal('-0.12345678901234567890123456789'), Decimal('1e-40')),
     )
     with localcontext() as context:
         context.prec = 4
         construction, loading = encode_processed(model)
         assert processed_matches(construction, construction)
-    coordinates = construction.split()[11:17]
+    coordinates = construction.split()[3:9]
     assert Decimal(coordinates[4]) == Decimal('12345678901234567890.12345678900000123456789012345')
-    assert Decimal(loading.split()[19]) == model.nodal_forces[1]
+    assert Decimal(loading.split()[6]) == model.nodal_forces[1]
+    assert Decimal(loading.split()[10]) == model.distributed_loads[0]
+    assert Decimal(loading.split()[12]) == model.distributed_loads[1]
 
 
 @pytest.mark.parametrize('kind', ['empty', 'unsupported', 'negative'])
@@ -170,12 +174,21 @@ def test_count_field_requires_matching_integer(two_bars, replacement):
     assert not processed_matches(' '.join(tokens), construction)
 
 
+@pytest.mark.parametrize(('file_index', 'position'), [(0, 9), (1, 3), (1, 5), (1, 9)])
+def test_element_numbers_require_integer_notation(two_bars, file_index, position):
+    '''Номера стержней, узлов и закреплений не принимают дробную запись индекса.'''
+    expected = encode_processed(two_bars)[file_index]
+    tokens = expected.split()
+    tokens[position] += '.0'
+    assert not processed_matches(' '.join(tokens), expected)
+
+
 @pytest.mark.parametrize('replacement', ['Infinity', 'NaN', 'true', '1.251', '1e9999999999999999999999999999'])
 def test_numeric_field_rejects_invalid_or_changed_value(two_bars, replacement):
     '''Неконечные, повреждённые и изменённые значения снимают статус проверки.'''
     construction, _ = encode_processed(two_bars)
     tokens = construction.split()
-    tokens[13] = replacement
+    tokens[5] = replacement
     assert not processed_matches(' '.join(tokens), construction)
 
 

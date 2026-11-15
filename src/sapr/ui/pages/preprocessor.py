@@ -766,15 +766,13 @@ class PreprocessorPage(QWidget):
             self.saveRequested.emit()
 
     def _validate(self) -> None:
-        '''Проверяет данные перед созданием файлов для процессора.'''
+        '''Передаёт проверку контроллеру и показывает ошибки исходной модели.'''
         if not self.commit_pending_edits():
             return
         issues = validate_model(self._model)
+        self.validateRequested.emit()
         if issues:
             self.show_status('\n'.join(issue.message for issue in issues[:4]))
-            return
-        self.show_status('Данные проверены')
-        self.validateRequested.emit()
 
     def _refresh_numbers(self) -> None:
         '''Меняет только отображение чисел в таблицах и на схеме.'''
