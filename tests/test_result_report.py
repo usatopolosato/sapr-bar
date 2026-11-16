@@ -9,6 +9,7 @@ import pytest
 from src.sapr.domain import demo_model
 from src.sapr.domain.postprocessor import AxialPostprocessor
 from src.sapr.domain.processor import AxialProcessor
+from src.sapr.formatting import format_quantity
 from src.sapr.storage import ProjectStore
 from src.sapr.storage.result_report import ResultReport
 
@@ -24,19 +25,23 @@ def checked_result(tmp_path):
     return project, result, fingerprint
 
 
-def test_report_contains_inputs_exact_values_extrema_and_fingerprint(checked_result):
-    '''Сохраняет все требуемые разделы в папке проекта без округления Decimal.'''
+def test_report_contains_readable_tables_without_changing_source_values(checked_result):
+    '''Сокращает отображение чисел, сохраняя исходники и расчётные значения.'''
     project, result, fingerprint = checked_result
     before = {name: (project.path / name).read_bytes() for name in ProjectStore.FILES}
+    displacements = result.processor.displacements
     path = ResultReport().write(project, result, fingerprint, 3)
     assert path == project.path / 'project.txt'
     text = path.read_text(encoding='utf-8')
-    for expected in ('ИСХОДНЫЕ ДАННЫЕ', 'УЗЛОВЫЕ ПЕРЕМЕЩЕНИЯ', 'ФОРМУЛЫ', 'ЭКСТРЕМУМЫ',
-                     'ПРОВЕРКА ПРОЧНОСТИ', 'ТАБЛИЦА СЕЧЕНИЙ', fingerprint, str(result.processor.displacements[2])):
+    for expected in ('Стержни', 'Узлы', 'Формулы', 'Экстремумы', 'Проверка прочности', 'Сечения',
+                     'округлены только для чтения', format_quantity(displacements[2], compact=True)):
         assert expected in text
+    assert fingerprint not in text
+    assert max(map(len, text.splitlines())) <= 100
     for bar in result.bars:
-        assert str(bar.extrema('u')[1].displacement_m) in text
+        assert format_quantity(bar.extrema('u')[1].displacement_m, compact=True) in text
         assert bar.stress_status in text
+    assert result.processor.displacements == displacements
     assert before == {name: (project.path / name).read_bytes() for name in ProjectStore.FILES}
     assert not list(project.path.glob('.report-*.tmp'))
 

@@ -1,16 +1,18 @@
 '''Сохраняет отчёт НДС, проверяя актуальность результата перед записью.'''
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 import tempfile
 from typing import Callable
 
 from ..domain.postprocessor import PostprocessorResult
+from ..formatting import format_quantity
 from .project_store import Project, ProjectStore
 
 
 class ResultReport:
-    '''Формирует текстовый отчёт в СИ без округления значений Decimal.'''
+    '''Формирует читаемый текстовый отчёт в СИ, округляя только представление.'''
 
     MAX_ROWS = 200000
 
@@ -48,7 +50,7 @@ class ResultReport:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='\n', dir=project.path,
                                              prefix='.report-', suffix='.tmp', delete=False) as stream:
                 temporary = Path(stream.name)
-                for line in self.lines(project.name, result, fingerprint, subdivisions):
+                for line in self.lines(project.name, result, subdivisions):
                     if cancelled is not None and cancelled():
                         raise ValueError('Отчёт отменён после изменения проекта')
                     stream.write(line + '\n')
@@ -63,62 +65,88 @@ class ResultReport:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
 
-    def lines(self, name: str, result: PostprocessorResult, fingerprint: str, subdivisions: int):
+    def lines(self, name: str, result: PostprocessorResult, subdivisions: int):
         '''Выдаёт строки отчёта последовательно, не накапливая таблицу в памяти.'''
-        yield 'САПР BAR - Результаты расчёта'
+        yield 'Результаты расчёта'
         yield f'Проект: {name}'
-        yield f'Создано UTC: {datetime.now(timezone.utc).isoformat(timespec="seconds")}'
-        yield f'Отпечаток исходного расчёта: {fingerprint}'
-        yield f'Точность Decimal: {result.precision} значащих цифр'
-        yield 'Единицы СИ: длина и перемещение м, сила Н, напряжение Па, погонная нагрузка Н/м'
-        yield 'Положительные N и sigma означают растяжение, положительное u - перемещение вправо'
-        yield 'Все числовые значения записаны без округления для отображения'
+        yield f'Дата: {datetime.now(timezone.utc):%d.%m.%Y %H:%M} UTC'
+        yield 'Все величины в СИ. Числа округлены только для чтения.'
+        yield 'Проверка прочности выполнена без округления.'
+        yield 'Положительные N и σ - растяжение, положительное u - перемещение вправо.'
         yield ''
-        yield 'ИСХОДНЫЕ ДАННЫЕ'
-        yield 'Стержень  L, м  A, м2  E, Па  Допуск, Па  q, Н/м'
-        for response in result.bars:
-            bar = response.geometry
-            yield self._row(response.index + 1, bar.length_m, bar.area_m2, bar.modulus_pa,
-                            bar.allowable_stress_pa, response.q_n_per_m)
+        yield 'Стержни'
+        yield from self._table(
+            ('Стержень', 'L, м', 'A, м2', 'E, Па', 'Допуск, Па', 'q, Н/м'),
+            ((bar.index + 1, bar.geometry.length_m, bar.geometry.area_m2, bar.geometry.modulus_pa,
+              bar.geometry.allowable_stress_pa, bar.q_n_per_m) for bar in result.bars),
+            (8, 13, 13, 13, 13, 13),
+        )
         yield ''
-        yield 'УЗЛОВЫЕ ПЕРЕМЕЩЕНИЯ И РЕАКЦИИ'
-        yield 'Узел  Закрепление  F, Н  Delta, м  Реакция, Н'
+        yield 'Узлы'
         source = result.processor
-        for index, (fixed, force, displacement, reaction) in enumerate(zip(
-                source.model.supports, source.model.nodal_forces, source.displacements, source.reactions), 1):
-            yield self._row(index, int(fixed), force, displacement, reaction)
+        yield from self._table(
+            ('Узел', 'Закрепление', 'F, Н', 'Δ, м', 'Реакция, Н'),
+            ((index, 'Да' if fixed else 'Нет', force, displacement, reaction)
+             for index, (fixed, force, displacement, reaction) in enumerate(zip(
+                 source.model.supports, source.model.nodal_forces, source.displacements, source.reactions), 1)),
+            (8, 13, 13, 13, 13), left_columns=(0, 1),
+        )
         yield ''
-        yield 'ФОРМУЛЫ'
-        yield 'N(x) = EA/L * (Delta_right - Delta_left) + q * (L/2 - x)'
-        yield 'sigma(x) = N(x) / A'
-        yield 'u(x) = Delta_left + x/L * (Delta_right - Delta_left) + q*x*(L-x)/(2*EA)'
-        yield 'x - локальная координата стержня от 0 до L'
+        yield 'Проверка прочности'
+        yield from self._table(
+            ('Стержень', 'Макс модуль σ, Па', 'Допуск, Па', 'Результат'),
+            ((bar.index + 1, bar.max_abs_stress_pa, bar.geometry.allowable_stress_pa, bar.stress_status)
+             for bar in result.bars),
+            (8, 17, 13, 20), left_columns=(0, 3),
+        )
         yield ''
-        yield 'ЭКСТРЕМУМЫ И ПРОВЕРКА ПРОЧНОСТИ'
+        yield 'Экстремумы'
+        yield 'x - расстояние от начала выбранного стержня.'
         for bar in result.bars:
-            yield f'Стержень {bar.index + 1}'
-            for component, units in (('N', 'Н'), ('sigma', 'Па'), ('u', 'м')):
-                minimum, maximum = bar.extrema(component)
-                yield f'{component}, {units}: min {minimum.value(component)} при x = {minimum.x_m} м'
-                yield f'{component}, {units}: max {maximum.value(component)} при x = {maximum.x_m} м'
-            yield f'Максимум модуля sigma: {bar.max_abs_stress_pa} Па'
-            yield f'Допуск: {bar.geometry.allowable_stress_pa} Па'
-            yield f'Отношение к допуску: {bar.stress_ratio}'
-            yield f'Состояние: {bar.stress_status}'
             yield ''
-        yield f'ТАБЛИЦА СЕЧЕНИЙ - разбиений на стержень {subdivisions}'
-        yield 'Концы, экстремумы, нули функций и пересечения допуска включены дополнительно'
-        yield 'Стержень  x, м  N, Н  sigma, Па  u, м'
-        rows = 0
+            yield f'Стержень {bar.index + 1}'
+            rows = []
+            for component, label in (('N', 'N, Н'), ('sigma', 'σ, Па'), ('u', 'u, м')):
+                minimum, maximum = bar.extrema(component)
+                rows.append((label, minimum.value(component), minimum.x_m, maximum.value(component), maximum.x_m))
+            yield from self._table(('Величина', 'Минимум', 'x минимума, м', 'Максимум', 'x максимума, м'),
+                                   rows, (8, 13, 13, 13, 13))
+        yield ''
+        yield 'Сечения'
+        yield f'Разбиений на стержень: {subdivisions}'
+        yield 'Концы, экстремумы, нули и пересечения допуска добавлены в таблицу.'
+        count = 0
         for bar in result.bars:
+            yield ''
+            yield f'Стержень {bar.index + 1}'
+            widths = (13, 13, 13, 13)
+            yield self._row(('x, м', 'N, Н', 'σ, Па', 'u, м'), widths)
             for x_m in bar.sample_positions(subdivisions):
-                rows += 1
-                if rows > self.MAX_ROWS:
+                count += 1
+                if count > self.MAX_ROWS:
                     raise ValueError('Для отчёта уменьшите число разбиений. Допустимо до 200000 строк')
                 point = bar.at(x_m)
-                yield self._row(point.bar_index + 1, point.x_m, point.force_n, point.stress_pa, point.displacement_m)
+                yield self._row((point.x_m, point.force_n, point.stress_pa, point.displacement_m), widths)
+        yield ''
+        yield 'Формулы'
+        yield 'N(x) = E*A/L * (Δj - Δi) + q * (L/2 - x)'
+        yield 'σ(x) = N(x) / A'
+        yield 'u(x) = Δi + x/L * (Δj - Δi) + q*x*(L-x)/(2*E*A)'
+        yield 'Δi и Δj - перемещения начального и конечного узлов стержня.'
+
+    @classmethod
+    def _table(cls, headers, rows, widths, *, left_columns=(0,)):
+        '''Выравнивает заголовки и строки одинаково, сохраняя потоковую запись.'''
+        widths = tuple(max(width, len(header)) for header, width in zip(headers, widths))
+        yield cls._row(headers, widths, left_columns=left_columns)
+        for values in rows:
+            yield cls._row(values, widths, left_columns=left_columns)
 
     @staticmethod
-    def _row(*values) -> str:
-        '''Разделяет точные числовые значения столбцами текстовой таблицы.'''
-        return '  '.join(str(value).rjust(24) for value in values)
+    def _row(values, widths, *, left_columns=(0,)) -> str:
+        '''Записывает числа компактно и отделяет столбцы обычными пробелами.'''
+        cells = []
+        for index, (value, width) in enumerate(zip(values, widths)):
+            text = format_quantity(value, compact=True) if isinstance(value, Decimal) else str(value)
+            cells.append(text.ljust(width) if index in left_columns else text.rjust(width))
+        return '  '.join(cells).rstrip()

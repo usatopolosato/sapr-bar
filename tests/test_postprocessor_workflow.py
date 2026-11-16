@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import QApplication
 from src.sapr.domain import Bar, StructuralModel, demo_model
 from src.sapr.domain.postprocessor import AxialPostprocessor
 from src.sapr.domain.processor import AxialProcessor
+from src.sapr.formatting import format_quantity
 from src.sapr.ui.feedback import show_feedback
 from src.sapr.ui.main_window import MainWindow, Page
 from src.sapr.ui.theme import ThemeManager, ThemeMode
@@ -177,8 +178,8 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.page.reportButton.click()
         self._wait(lambda: self.window._report_task is None)
         text = (self.project.path / 'project.txt').read_text(encoding='utf-8')
-        self.assertIn('разбиений на стержень 3', text)
-        self.assertIn(str(self.page.result.processor.displacements[2]), text)
+        self.assertIn('Разбиений на стержень: 3', text)
+        self.assertIn(format_quantity(self.page.result.processor.displacements[2], compact=True), text)
         self.assertIn('Отчёт сохранён - project.txt', self.page.statusLabel.text())
 
     def test_old_result_cannot_enter_another_project(self):
