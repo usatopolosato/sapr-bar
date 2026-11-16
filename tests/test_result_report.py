@@ -29,7 +29,7 @@ def test_report_contains_inputs_exact_values_extrema_and_fingerprint(checked_res
     project, result, fingerprint = checked_result
     before = {name: (project.path / name).read_bytes() for name in ProjectStore.FILES}
     path = ResultReport().write(project, result, fingerprint, 3)
-    assert path == project.path / 'project.res'
+    assert path == project.path / 'project.txt'
     text = path.read_text(encoding='utf-8')
     for expected in ('ИСХОДНЫЕ ДАННЫЕ', 'УЗЛОВЫЕ ПЕРЕМЕЩЕНИЯ', 'ФОРМУЛЫ', 'ЭКСТРЕМУМЫ',
                      'ПРОВЕРКА ПРОЧНОСТИ', 'ТАБЛИЦА СЕЧЕНИЙ', fingerprint, str(result.processor.displacements[2])):
@@ -57,7 +57,7 @@ def test_modified_files_cannot_overwrite_previous_report(checked_result, filenam
 def test_changed_files_during_report_abort_atomic_write(checked_result):
     '''Повторно проверяет снимок непосредственно перед заменой готового файла.'''
     project, result, fingerprint = checked_result
-    target = project.path / 'project.res'
+    target = project.path / 'project.txt'
     target.write_text('Предыдущий отчёт', encoding='utf-8')
     writer = ResultReport()
     original_lines = writer.lines
@@ -77,7 +77,7 @@ def test_changed_files_during_report_abort_atomic_write(checked_result):
 def test_cancelled_report_keeps_previous_file(checked_result):
     '''Прерывает запись при правках в интерфейсе, не трогая прежний отчёт.'''
     project, result, fingerprint = checked_result
-    target = project.path / 'project.res'
+    target = project.path / 'project.txt'
     target.write_text('Прежний расчёт', encoding='utf-8')
     with pytest.raises(ValueError, match='отменён'):
         ResultReport().write(project, result, fingerprint, cancelled=lambda: True)
@@ -95,13 +95,13 @@ def test_wrong_model_and_excessive_report_size_rejected(checked_result):
         ResultReport().write(project, wrong, fingerprint)
     with patch.object(ResultReport, 'MAX_ROWS', 3), pytest.raises(ValueError, match='разбиений'):
         ResultReport().write(project, result, fingerprint)
-    assert not (project.path / 'project.res').exists()
+    assert not (project.path / 'project.txt').exists()
 
 
 def test_failed_replace_preserves_previous_report(checked_result):
     '''Удаляет временный файл при ошибке записи и сохраняет прежний отчёт.'''
     project, result, fingerprint = checked_result
-    target = project.path / 'project.res'
+    target = project.path / 'project.txt'
     target.write_text('Прежний отчёт', encoding='utf-8')
     with patch('pathlib.Path.replace', side_effect=PermissionError('Нет доступа')), pytest.raises(PermissionError):
         ResultReport().write(project, result, fingerprint)

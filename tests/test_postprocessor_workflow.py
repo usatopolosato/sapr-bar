@@ -159,7 +159,7 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.page.reportButton.click()
         self.assertIsNone(self.page.result)
         self.assertIsNone(self.window._report_task)
-        self.assertFalse((self.project.path / 'project.res').exists())
+        self.assertFalse((self.project.path / 'project.txt').exists())
 
     def test_watcher_checks_files_on_postprocessor_page(self):
         '''Следит за CN и LD, когда пользователь просматривает эпюры.'''
@@ -176,10 +176,10 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.page.subdivisionsSpin.setValue(3)
         self.page.reportButton.click()
         self._wait(lambda: self.window._report_task is None)
-        text = (self.project.path / 'project.res').read_text(encoding='utf-8')
+        text = (self.project.path / 'project.txt').read_text(encoding='utf-8')
         self.assertIn('разбиений на стержень 3', text)
         self.assertIn(str(self.page.result.processor.displacements[2]), text)
-        self.assertIn('Отчёт сохранён', self.page.statusLabel.text())
+        self.assertIn('Отчёт сохранён - project.txt', self.page.statusLabel.text())
 
     def test_old_result_cannot_enter_another_project(self):
         '''Отбрасывает завершение задачи прежнего проекта.'''

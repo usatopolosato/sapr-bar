@@ -16,7 +16,7 @@ class ResultReport:
 
     def write(self, project: Project, result: PostprocessorResult, fingerprint: str, subdivisions: int = 10,
               *, cancelled: Callable[[], bool] | None = None) -> Path:
-        '''Атомарно записывает project.res для актуального расчёта.
+        '''Атомарно записывает project.txt в UTF-8 для актуального расчёта.
 
         Args:
             project: Сохранённый и проверенный проект.
@@ -40,9 +40,9 @@ class ResultReport:
         model, actual = store.read_for_processor(project)
         if not fingerprint or fingerprint != actual or result.processor.model != model:
             raise ValueError('Расчёт устарел. Повторите проверку и расчёт')
-        target = project.path / 'project.res'
+        target = project.path / 'project.txt'
         if target.is_symlink() or (target.exists() and not target.is_file()):
-            raise ValueError('project.res должен быть обычным файлом в папке проекта')
+            raise ValueError('project.txt должен быть обычным файлом в папке проекта')
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='\n', dir=project.path,
