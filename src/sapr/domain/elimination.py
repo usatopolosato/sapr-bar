@@ -6,7 +6,7 @@ from decimal import Context, Decimal, localcontext
 from .processor import LinearSystem, ProcessorResult, ZERO
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EliminationStep:
     '''Описывает исключение коэффициента под диагональю одной строки.'''
 

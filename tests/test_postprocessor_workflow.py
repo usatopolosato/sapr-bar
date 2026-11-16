@@ -262,6 +262,29 @@ class ResponseTableTests(unittest.TestCase):
         self.assertLessEqual(sum(map(len, table._extra_positions)), 7 * count)
         self.assertEqual(table.section(table.rowCount() - 1).x_m, D(1))
 
+    def test_scrolling_and_new_result_preserve_exact_section_values(self):
+        '''Не смешивает сечения после прокрутки, смены темы и нового расчёта.'''
+        source = demo_model()
+        result = AxialPostprocessor().analyze(AxialProcessor().solve(source))
+        table = ResponseTableModel(result, 1000)
+        expected = table.section(5)
+        for row in range(400):
+            for column in range(5):
+                table.index(row, column).data(Qt.ItemDataRole.DisplayRole)
+        self.assertEqual(table.section(5), expected)
+        self.assertEqual(table.index(5, 4).data(Qt.ItemDataRole.UserRole), expected.displacement_m)
+        table.set_theme(table.colors)
+        self.assertEqual(table.section(5), expected)
+        with self.assertRaises(IndexError):
+            table.section(-1)
+        with self.assertRaises(IndexError):
+            table.section(table.rowCount())
+        unloaded = StructuralModel(source.bars, (D(0),) * (len(source.bars) + 1),
+                                   (D(0),) * len(source.bars), source.supports)
+        other = ResponseTableModel(AxialPostprocessor().analyze(AxialProcessor().solve(unloaded)), 1000)
+        self.assertEqual(other.section(5).displacement_m, D(0))
+        self.assertEqual(table.section(5), expected)
+
     def test_plot_normalizes_extreme_si_values_before_float_conversion(self):
         '''Рисует нулевые поля и диапазоны за пределами float без переполнения.'''
         for exponent, force in ((800, D(1)), (-800, D(1)), (0, D(0))):

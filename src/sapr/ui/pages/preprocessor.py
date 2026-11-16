@@ -1,8 +1,7 @@
 '''Редактирует исходные данные стержневой конструкции в единицах СИ.'''
 
-import re
 from dataclasses import replace
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -14,11 +13,11 @@ from ...domain import Bar, StructuralModel
 from ..feedback import set_input_error, show_feedback
 from ..formatting import format_quantity
 from ..loader import load_form
+from ..number_input import parse_number
 from ..widgets.structure_view import StructureView
 
 
 ZERO = Decimal('0')
-NUMBER_PATTERN = re.compile(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z')
 
 
 class DecimalDelegate(QStyledItemDelegate):
@@ -182,18 +181,7 @@ class PreprocessorPage(QWidget):
         Raises:
             ValueError: Запись некорректна или значение недопустимо.
         '''
-        normalized = text.strip().replace(',', '.')
-        if len(normalized) > 4096 or not NUMBER_PATTERN.fullmatch(normalized):
-            raise ValueError('Введите число например 1.234 или 1.2e8')
-        try:
-            value = Decimal(normalized)
-        except InvalidOperation as error:
-            raise ValueError('Некорректное число') from error
-        if not value.is_finite() or abs(value.as_tuple().exponent) > 1000:
-            raise ValueError('Порядок числа должен быть от -1000 до 1000')
-        if positive and value <= ZERO:
-            raise ValueError('Значение должно быть больше нуля')
-        return value
+        return parse_number(text, positive)
 
     def _format(self, value: Decimal) -> str:
         '''Форматирует величину только для показа.

@@ -1,6 +1,7 @@
 '''Представляет сечения стержней без хранения полной таблицы отсчётов.'''
 
 from bisect import bisect_left, bisect_right
+from collections import OrderedDict
 from decimal import Context, Decimal, localcontext
 
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
@@ -38,6 +39,7 @@ class ResponseTableModel(QAbstractTableModel):
         self._offsets = [0]
         self._extra_positions = []
         self._extra_rows = []
+        self._sections = OrderedDict()
         with localcontext(Context(prec=result.precision)):
             for bar in self._bars:
                 if extrema_only:
@@ -81,6 +83,9 @@ class ResponseTableModel(QAbstractTableModel):
         '''
         if not 0 <= row < self.rowCount():
             raise IndexError('Строка таблицы находится вне диапазона')
+        if row in self._sections:
+            self._sections.move_to_end(row)
+            return self._sections[row]
         position = bisect_right(self._offsets, row) - 1
         bar = self._bars[position]
         local_row = row - self._offsets[position]
@@ -96,7 +101,11 @@ class ResponseTableModel(QAbstractTableModel):
                 grid_row = local_row - extra
                 with localcontext(Context(prec=self.result.precision)):
                     x = bar.geometry.length_m * grid_row / self.subdivisions
-        return bar.at(x)
+        section = bar.at(x)
+        self._sections[row] = section
+        if len(self._sections) > 256:
+            self._sections.popitem(last=False)
+        return section
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         '''Отдаёт текст, точный Decimal и оформление превышений допуска.'''

@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 
 from ..domain import StructuralModel, validate_model
 from ..storage import Project, ProjectStore
+from ..metadata import AUTHOR, NAME
 
 from .loader import load_form
 from .pages.postprocessor import PostprocessorPage
@@ -21,8 +22,7 @@ from .pages.processor import ProcessorPage
 from .pages.project_hub import ProjectHubPage
 from .pages.welcome import WelcomePage
 from .project_dialog import ProjectDialog
-from .processor_task import ProcessorTask
-from .postprocessor_task import PostprocessorTask, ReportTask
+from .tasks import ProcessorTask, PostprocessorTask, ReportTask
 from .theme import ThemeColors, ThemeManager, ThemeMode
 
 
@@ -475,12 +475,12 @@ class MainWindow(QMainWindow):
 
     def _update_title(self) -> None:
         '''Показывает название и наличие несохранённых изменений.'''
-        parts = ['САПР BAR']
+        parts = [NAME]
         if self.current_project is not None:
             parts.append(self.current_project.name)
         if self._dirty:
             parts.append('Не сохранено')
-        parts.append('usatopolosato')
+        parts.append(AUTHOR)
         self.setWindowTitle(' - '.join(parts))
 
     def _confirm_project_change(self) -> bool:

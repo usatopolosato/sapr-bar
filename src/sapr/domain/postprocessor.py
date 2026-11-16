@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from decimal import Context, Decimal, DecimalException, localcontext
 from functools import cached_property
+from operator import attrgetter
 
 from .model import Bar
 from .processor import CalculationError, ProcessorResult
@@ -13,7 +14,7 @@ ZERO = Decimal('0')
 TWO = Decimal('2')
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SectionResult:
     '''Хранит компоненты НДС выбранного сечения в единицах СИ.'''
 
@@ -32,7 +33,13 @@ class SectionResult:
         Returns:
             Значение без округления для отображения.
         '''
-        return {'N': self.force_n, 'sigma': self.stress_pa, 'u': self.displacement_m}[component]
+        if component == 'N':
+            return self.force_n
+        if component == 'sigma':
+            return self.stress_pa
+        if component == 'u':
+            return self.displacement_m
+        raise KeyError(component)
 
 
 @dataclass(frozen=True)
@@ -139,15 +146,19 @@ class BarResponse:
     @cached_property
     def _extrema(self) -> dict[str, tuple[SectionResult, SectionResult]]:
         '''Сохраняет экстремумы функций без построения сетки отсчётов.'''
-        points = [self.at(ZERO), self.at(self.geometry.length_m)]
+        left, right = self.at(ZERO), self.at(self.geometry.length_m)
+        force_extrema = (left, right) if left.force_n <= right.force_n else (right, left)
+        if left.force_n == right.force_n:
+            force_extrema = (left, left)
+        points = [left, right]
         if self.q_n_per_m:
             with localcontext(Context(prec=self.precision)):
                 root = self.force_origin_n / self.q_n_per_m
                 if ZERO < root < self.geometry.length_m:
                     points.append(self.at(root))
-        return {component: (min(points, key=lambda point: point.value(component)),
-                            max(points, key=lambda point: point.value(component)))
-                for component in ('N', 'sigma', 'u')}
+        return {'N': force_extrema, 'sigma': force_extrema,
+                'u': (min(points, key=attrgetter('displacement_m')),
+                      max(points, key=attrgetter('displacement_m')))}
 
     def extrema(self, component: str) -> tuple[SectionResult, SectionResult]:
         '''Возвращает минимум и максимум функции по аналитическим кандидатам.'''
@@ -221,7 +232,7 @@ class AxialPostprocessor:
                 bars = []
                 for index, (bar, q) in enumerate(zip(model.bars, model.distributed_loads)):
                     left, right = processor.displacements[index:index + 2]
-                    force = bar.modulus_pa * bar.area_m2 / bar.length_m * (right - left) + q * bar.length_m / TWO
+                    force = processor.stiffnesses[index] * (right - left) + processor.end_loads[index]
                     bars.append(BarResponse(index, bar, starts[index], q, left, right, force, processor.precision))
                 return PostprocessorResult(processor, tuple(bars))
         except DecimalException as error:

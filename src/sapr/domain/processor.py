@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from decimal import Context, Decimal, DecimalException, localcontext
+from itertools import chain
 
 from .model import StructuralModel
 from .validation import ModelValidationError, validate_model
@@ -17,7 +18,7 @@ class CalculationError(ValueError):
     '''Сообщает о невозможности получить достоверное решение.'''
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LinearSystem:
     '''Хранит систему A * delta = b в разреженном диагональном формате.
 
@@ -48,14 +49,17 @@ class LinearSystem:
 
     def row_terms(self, row: int) -> tuple[tuple[int, Decimal], ...]:
         '''Возвращает ненулевые коэффициенты строки с номерами столбцов.'''
-        return tuple(
-            (column, self.coefficient(row, column))
-            for column in range(max(0, row - 1), min(len(self.diagonal), row + 2))
-            if self.coefficient(row, column)
-        )
+        terms = []
+        if row and self.lower[row - 1]:
+            terms.append((row - 1, self.lower[row - 1]))
+        if self.diagonal[row]:
+            terms.append((row, self.diagonal[row]))
+        if row < len(self.upper) and self.upper[row]:
+            terms.append((row + 1, self.upper[row]))
+        return tuple(terms)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ProcessorResult:
     '''Хранит неизменяемые этапы решения и результат в СИ.
 
@@ -162,7 +166,8 @@ class AxialProcessor:
                     adjacent[index - 1] = ZERO
                 if index < len(adjacent):
                     adjacent[index] = ZERO
-        return LinearSystem(tuple(diagonal), tuple(adjacent), tuple(adjacent), tuple(rhs))
+        adjacent = tuple(adjacent)
+        return LinearSystem(tuple(diagonal), adjacent, adjacent, tuple(rhs))
 
     @staticmethod
     def _eliminate(system: LinearSystem) -> tuple[LinearSystem, tuple[Decimal, ...]]:
@@ -172,9 +177,10 @@ class AxialProcessor:
         for index in range(1, count):
             if diagonal[index - 1] <= ZERO:
                 raise CalculationError('Система не имеет устойчивого единственного решения')
-            factor = system.lower[index - 1] / diagonal[index - 1]
-            diagonal[index] -= factor * system.upper[index - 1]
-            rhs[index] -= factor * rhs[index - 1]
+            if system.lower[index - 1]:
+                factor = system.lower[index - 1] / diagonal[index - 1]
+                diagonal[index] -= factor * system.upper[index - 1]
+                rhs[index] -= factor * rhs[index - 1]
         if diagonal[-1] <= ZERO:
             raise CalculationError('Система не имеет устойчивого единственного решения')
         displacement = [ZERO] * count
@@ -190,21 +196,31 @@ class AxialProcessor:
         reactions = []
         residual = ZERO
         for index, fixed in enumerate(model.supports):
-            terms = [value * displacement[column] for column, value in system.row_terms(index)]
-            difference = sum(terms, ZERO) - system.rhs[index]
+            total = system.diagonal[index] * displacement[index]
+            scale = abs(system.rhs[index]) + abs(total)
+            if index:
+                term = system.lower[index - 1] * displacement[index - 1]
+                total += term
+                scale += abs(term)
+            if index < len(system.upper):
+                term = system.upper[index] * displacement[index + 1]
+                total += term
+                scale += abs(term)
+            difference = total - system.rhs[index]
             if not displacement[index].is_finite() or (fixed and displacement[index] != ZERO):
                 raise CalculationError('Не выполнены условия закрепления узлов')
             if fixed:
                 reactions.append(difference)
             else:
                 reactions.append(ZERO)
-                scale = abs(system.rhs[index]) + sum((abs(term) for term in terms), ZERO)
                 relative = abs(difference) / scale if scale else abs(difference)
                 residual = max(residual, relative)
-        forces = (*reactions, *model.nodal_forces,
-                  *(q * bar.length_m for q, bar in zip(model.distributed_loads, model.bars)))
-        scale = sum((abs(force) for force in forces), ZERO)
-        balance = abs(sum(forces, ZERO)) / scale if scale else ZERO
+        loads = (q * bar.length_m for q, bar in zip(model.distributed_loads, model.bars))
+        total, scale = ZERO, ZERO
+        for force in chain(reactions, model.nodal_forces, loads):
+            total += force
+            scale += abs(force)
+        balance = abs(total) / scale if scale else ZERO
         if residual > TOLERANCE or balance > TOLERANCE:
             raise CalculationError('Не достигнута точность решения. Проверьте диапазон исходных величин')
         return tuple(reactions), residual

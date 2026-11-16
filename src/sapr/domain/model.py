@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass
 from decimal import Decimal, localcontext
+from functools import cached_property
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Bar:
     '''Хранит параметры одного стержня в единицах СИ.
 
@@ -37,7 +38,7 @@ class StructuralModel:
     distributed_loads: tuple[Decimal, ...] = ()
     supports: tuple[bool, ...] = ()
 
-    @property
+    @cached_property
     def node_positions_m(self) -> tuple[Decimal, ...]:
         '''Возвращает координаты узлов без округления исходных длин.'''
         if not self.bars:

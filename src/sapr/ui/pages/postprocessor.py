@@ -2,7 +2,6 @@
 
 from decimal import Context, Decimal, InvalidOperation, localcontext
 from html import escape
-import re
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QHeaderView, QWidget
@@ -10,13 +9,11 @@ from PyQt6.QtWidgets import QHeaderView, QWidget
 from ...domain.postprocessor import PostprocessorResult
 from ..feedback import set_input_error, show_feedback
 from ..loader import load_form
+from ..number_input import parse_number
 from ..theme import LIGHT_COLORS, ThemeColors
 from ..widgets.linear_system import configure_result_table, number_text
 from ..widgets.response_plot import ResponsePlot
 from ..widgets.response_table import ResponseTableModel
-
-
-NUMBER_PATTERN = re.compile(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z')
 
 
 class PostprocessorPage(QWidget):
@@ -216,13 +213,8 @@ class PostprocessorPage(QWidget):
         '''Проверяет координату без промежуточного преобразования в float.'''
         if self.result is None:
             return
-        text = self.positionInput.text().strip().replace(',', '.')
         try:
-            if len(text) > 4096 or not NUMBER_PATTERN.fullmatch(text):
-                raise ValueError('Введите число например 1.234 или 1.2e8')
-            x = Decimal(text)
-            if not x.is_finite() or abs(x.as_tuple().exponent) > 1000:
-                raise ValueError('Некорректная координата')
+            x = parse_number(self.positionInput.text())
             bar = self.result.bars[self.barCombo.currentIndex()]
             if not Decimal(0) <= x <= bar.geometry.length_m:
                 raise ValueError(f'x должен быть от 0 до {number_text(bar.geometry.length_m, True)} м')
