@@ -150,6 +150,8 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.window.save_project()
         self.window.navigate(Page.POSTPROCESSOR)
         self.assertIsNone(self.page.result)
+        self.assertFalse(self.window.processor_page.calculateButton.isEnabled())
+        self.window.validate_project()
         self._calculate()
 
     def test_external_change_invalidates_postprocessor_and_export(self):

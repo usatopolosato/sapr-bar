@@ -119,6 +119,25 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self._assert_module_availability(False, False)
         self.assertTrue(self.window.project_page.processorCard.toolTip())
 
+    def test_save_revokes_results_until_explicit_validation(self) -> None:
+        '''Отзывает расчёт и обработанные файлы при обычном сохранении.'''
+        self._calculate()
+        self._assert_module_availability(True, True)
+        self.window.navigate(Page.PREPROCESSOR)
+        self.window.preprocessor_page.saveProjectButton.click()
+        self._assert_module_availability(False, False)
+        self.assertIsNone(self.page.result)
+        self.assertFalse(self.window.current_project.validated)
+        self.assertFalse((self.project.path / 'project.cnx').exists())
+        self.assertFalse((self.project.path / 'project.ldx').exists())
+        self.window.calculate_project()
+        self.assertIsNone(self.window._processor_task)
+        self.assertIsNone(self.page.result)
+        self.assertTrue(self.window.validate_project())
+        self._assert_module_availability(True, False)
+        self._calculate()
+        self._assert_module_availability(True, True)
+
     def test_all_steps_use_same_decimal_result(self) -> None:
         '''Показывает обе матрицы, прямой ход, уравнения и вектор delta.'''
         self._calculate()

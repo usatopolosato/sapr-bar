@@ -242,17 +242,36 @@ class MainWindow(QMainWindow):
             self._activate_project(project)
 
     def save_project(self) -> bool:
-        '''Сохраняет исходные данные и проверенные данные процессора.
+        '''Сохраняет только CN, LD и KPR без подготовки данных процессора.
 
         Returns:
             Признак успешной записи текущей модели.
         '''
+        return self._write_project(validate=False)
+
+    def validate_project(self) -> bool:
+        '''Сохраняет модель и формирует CNX и LDX после успешной проверки.
+
+        Returns:
+            Признак успешной проверки и записи обработанных файлов.
+        '''
+        return self._write_project(validate=True)
+
+    def _write_project(self, *, validate: bool) -> bool:
+        '''Записывает исходные данные и согласует доступность расчётных модулей.
+
+        Args:
+            validate: Требование проверить модель и подготовить файлы процессора.
+
+        Returns:
+            Признак успешного выполнения выбранного действия.
+        '''
         if self.current_project is None or not self.preprocessor_page.commit_pending_edits():
             return False
         model = self.preprocessor_page.model
-        issues = validate_model(model)
+        issues = validate_model(model) if validate else ()
         try:
-            self.current_project = self._store.save(self.current_project, model, validate=not issues)
+            self.current_project = self._store.save(self.current_project, model, validate=validate and not issues)
         except (OSError, ValueError) as error:
             self._show_error('Не удалось сохранить проект', error)
             return False
@@ -260,12 +279,11 @@ class MainWindow(QMainWindow):
         self._update_title()
         self._invalidate_processor()
         self._refresh_processor()
-        self.preprocessor_page.show_status('Черновик сохранён' if issues else 'Проект проверен и сохранён')
-        return True
-
-    def validate_project(self) -> None:
-        '''Записывает проверенные данные для последующего расчёта.'''
-        self.save_project()
+        if issues:
+            self.preprocessor_page.show_status('\n'.join(issue.message for issue in issues[:4]), error=True)
+        else:
+            self.preprocessor_page.show_status('Проект проверен и сохранён' if validate else 'Исходные данные сохранены')
+        return not issues
 
     def _model_changed(self, model: StructuralModel) -> None:
         '''Отмечает изменения относительно последнего сохранения.

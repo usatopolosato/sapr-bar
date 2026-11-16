@@ -1,5 +1,6 @@
 '''Проверяет сохранение проекта через действия интерфейса.'''
 
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -8,7 +9,8 @@ from unittest.mock import patch
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-from PyQt6.QtCore import QSettings, QTimer
+from PyQt6.QtCore import QSettings, QTimer, Qt
+from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from src.sapr.domain import demo_model
@@ -62,8 +64,70 @@ class ProjectWorkflowTests(unittest.TestCase):
         self.assertTrue(self.window.save_project())
         reopened = self.store.load(self.project.path)
         self.assertEqual(reopened.model.bars[0].area_m2, Decimal(exact))
-        self.assertTrue(reopened.validated)
+        self.assertFalse(reopened.validated)
+        self.assertEqual({path.name for path in self.project.path.iterdir()}, {'project.cn', 'project.ld', 'project.kpr'})
         self.assertFalse(self.window._dirty)
+
+    def test_save_and_check_buttons_have_separate_effects(self) -> None:
+        '''Оставляет сохранённую модель черновиком до отдельного нажатия Проверить.'''
+        project = self.store.create(self.root, 'Сохранение исходных данных')
+        self.window._activate_project(project)
+        self.page.set_model(demo_model())
+        self.page.saveProjectButton.click()
+        self.assertEqual({path.name for path in project.path.iterdir()}, {'project.cn', 'project.ld', 'project.kpr'})
+        manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+        self.assertFalse(manifest['validated'])
+        self.assertEqual(self.store.load(project.path).model, demo_model())
+        self.assertFalse(self.window.current_project.validated)
+        self.assertFalse(self.window.project_page.processorButton.isEnabled())
+        self.assertEqual(self.page.statusLabel.text(), 'Исходные данные сохранены')
+        self.page.validateButton.click()
+        prepared, _ = self.store.read_for_processor(self.window.current_project)
+        self.assertEqual(prepared, demo_model())
+        self.assertTrue(self.window.project_page.processorButton.isEnabled())
+        self.assertTrue(self.window.current_project.validated)
+        self.assertTrue(json.loads(project.project_file.read_text(encoding='utf-8'))['validated'])
+
+    def test_ctrl_s_only_saves_sources_and_pending_input(self) -> None:
+        '''Сохраняет точное значение по Ctrl S без подготовки файлов процессора.'''
+        from decimal import Decimal
+
+        self.window.show()
+        self.window.activateWindow()
+        self.page.lengthInput.setFocus()
+        QTest.qWait(50)
+        self.page.lengthInput.setText('4.125')
+        self.page.lengthInput.setModified(True)
+        QTest.keyClick(self.page.lengthInput, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
+        restored = self.store.load(self.project.path)
+        self.assertEqual(restored.model.bars[0].length_m, Decimal('4.125'))
+        self.assertFalse(restored.validated)
+        self.assertEqual({path.name for path in self.project.path.iterdir()}, {'project.cn', 'project.ld', 'project.kpr'})
+        self.assertFalse(self.window._dirty)
+
+    def test_save_on_close_does_not_validate(self) -> None:
+        '''Сохраняет черновик при закрытии без скрытой подготовки расчёта.'''
+        self.page.supportNodeCombo.setCurrentIndex(len(self.page.model.supports) - 1)
+        self.page.fixedSupportButton.click()
+        QTimer.singleShot(0, lambda: self._choose_message_button('Сохранить'))
+        self.assertTrue(self.window._confirm_project_change())
+        restored = self.store.load(self.project.path)
+        self.assertTrue(restored.model.right_support)
+        self.assertFalse(restored.validated)
+        self.assertEqual({path.name for path in self.project.path.iterdir()}, {'project.cn', 'project.ld', 'project.kpr'})
+        self.assertFalse(self.window._dirty)
+
+    def test_invalid_pending_input_keeps_saved_files_for_both_actions(self) -> None:
+        '''Не записывает непредставимый ввод и сохраняет прежние файлы проекта.'''
+        original = {path.name: path.read_bytes() for path in self.project.path.iterdir()}
+        self.page.lengthInput.setText('не число')
+        self.page.lengthInput.setModified(True)
+        for button in (self.page.saveProjectButton, self.page.validateButton):
+            with self.subTest(button=button.objectName()):
+                button.click()
+                self.assertEqual({path.name: path.read_bytes() for path in self.project.path.iterdir()}, original)
+                self.assertTrue(self.page.has_pending_edits)
+                self.assertEqual(self.page.lengthInput.text(), 'не число')
 
     def test_save_invalid_model_retains_draft_without_prepared_files(self) -> None:
         '''Проверяет сохранение модели без опор и отзыв старой подготовки.'''
@@ -133,10 +197,14 @@ class ProjectWorkflowTests(unittest.TestCase):
         '''Проверяет сохранность редактирования при ошибке записи на диск.'''
         self.page.supportNodeCombo.setCurrentIndex(len(self.page.model.supports) - 1)
         self.page.fixedSupportButton.click()
-        with patch.object(self.window._store, 'save', side_effect=PermissionError('Нет доступа')):
-            with patch.object(self.window, '_show_error') as notice:
-                self.assertFalse(self.window.save_project())
-                notice.assert_called_once()
+        original = {path.name: path.read_bytes() for path in self.project.path.iterdir()}
+        for action in (self.window.save_project, self.window.validate_project):
+            with self.subTest(action=action.__name__):
+                with patch.object(self.window._store, 'save', side_effect=PermissionError('Нет доступа')):
+                    with patch.object(self.window, '_show_error') as notice:
+                        self.assertFalse(action())
+                        notice.assert_called_once()
+                self.assertEqual({path.name: path.read_bytes() for path in self.project.path.iterdir()}, original)
         self.assertTrue(self.window._dirty)
         self.assertTrue(self.page.model.right_support)
         self.assertFalse(self.store.load(self.project.path).model.right_support)

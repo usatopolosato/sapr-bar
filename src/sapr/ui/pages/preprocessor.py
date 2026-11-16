@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QWidget,
 )
 
-from ...domain import Bar, StructuralModel, validate_model
+from ...domain import Bar, StructuralModel
 from ..feedback import set_input_error, show_feedback
 from ..formatting import format_quantity
 from ..loader import load_form
@@ -781,13 +781,9 @@ class PreprocessorPage(QWidget):
             self.saveRequested.emit()
 
     def _validate(self) -> None:
-        '''Передаёт проверку контроллеру и показывает ошибки исходной модели.'''
-        if not self.commit_pending_edits():
-            return
-        issues = validate_model(self._model)
-        self.validateRequested.emit()
-        if issues:
-            self.show_status('\n'.join(issue.message for issue in issues[:4]), error=True)
+        '''Передаёт контроллеру проверку и подготовку файлов процессора.'''
+        if self.commit_pending_edits():
+            self.validateRequested.emit()
 
     def _refresh_numbers(self) -> None:
         '''Меняет только отображение чисел в таблицах и на схеме.'''

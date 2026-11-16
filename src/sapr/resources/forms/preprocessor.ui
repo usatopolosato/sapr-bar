@@ -66,6 +66,9 @@
        <property name="text">
         <string>Проверить</string>
        </property>
+       <property name="toolTip">
+        <string>Проверить данные и разрешить расчёт</string>
+       </property>
        <property name="role" stdset="0">
         <string>secondary</string>
        </property>
@@ -78,6 +81,9 @@
       <widget class="QPushButton" name="saveProjectButton">
        <property name="text">
         <string>Сохранить</string>
+       </property>
+       <property name="toolTip">
+        <string>Сохранить исходные данные без проверки</string>
        </property>
        <property name="role" stdset="0">
         <string>primary</string>
