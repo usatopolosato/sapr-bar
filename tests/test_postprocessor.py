@@ -1,4 +1,4 @@
-'''Сверяет поля НДС с аналитическими задачами и равновесием раздаточных схем.'''
+'''Сверяет поля НДС с аналитическими решениями и условиями равновесия.'''
 
 from dataclasses import replace
 from decimal import Decimal as D, localcontext
@@ -58,7 +58,7 @@ def test_fixed_ends_have_internal_extremum(q):
 @pytest.mark.parametrize('case', CASES, ids=lambda case: case.name)
 @pytest.mark.parametrize('scale', [('1', '1', '1', '1', '1'), ('2.1e11', '8e-4', '0.7', '12500', '2300')],
                          ids=['unit', 'si'])
-def test_handout_fields_from_known_reactions(case, scale):
+def test_reference_fields_from_known_reactions(case, scale):
     '''Строит эталон N равновесием от известных реакций, а u интегрированием.'''
     with localcontext() as context:
         context.prec = 100

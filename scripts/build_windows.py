@@ -80,9 +80,7 @@ def prepare_notices() -> None:
         shutil.copy2(python_license, target / 'Python-LICENSE.txt')
     lines.extend(('', 'Сведения о компонентах:', 'https://www.python.org/',
                   'https://www.riverbankcomputing.com/software/pyqt/',
-                  'https://www.qt.io/', '',
-                  'В оформлении использован знак СТАНКИН с предоставленной обложки.',
-                  'Авторство приложения указано отдельно от принадлежности знака.'))
+                  'https://www.qt.io/'))
     (target / 'Компоненты.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 

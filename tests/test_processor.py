@@ -30,7 +30,7 @@ def model(lengths, areas, forces, loads, supports, modulus='1'):
     (model([2], [1], [0, 0], [0], [True, False]), ['0', '0']),
 ])
 def test_analytic_displacements(data, expected):
-    '''Сравнивает перемещения с независимыми ответами лекции и простых задач.'''
+    '''Сравнивает перемещения с независимыми аналитическими решениями.'''
     with localcontext() as context:
         context.traps[FloatOperation] = True
         result = AxialProcessor().solve(data)

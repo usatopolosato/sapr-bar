@@ -1,4 +1,4 @@
-'''Сверяет процессор с раздаточными задачами и независимым точным расчётом.'''
+'''Сверяет процессор с эталонными задачами и независимым точным расчётом.'''
 
 from dataclasses import dataclass
 from decimal import Decimal, localcontext
@@ -17,7 +17,7 @@ D = Decimal
 
 @dataclass(frozen=True)
 class ReferenceCase:
-    '''Описывает безразмерные множители задачи из раздаточного материала.'''
+    '''Описывает безразмерные параметры и эталонное решение задачи.'''
 
     name: str
     lengths: tuple
@@ -55,13 +55,11 @@ CASES = (
 @pytest.mark.parametrize('case', CASES, ids=lambda case: case.name)
 @pytest.mark.parametrize('scale', [('1', '1', '1', '1', '1'), ('2.1e11', '8e-4', '0.7', '12500', '2300')],
                          ids=['unit', 'si'])
-def test_handout_through_checked_project_files(tmp_path, case, scale):
+def test_reference_cases_through_checked_project_files(tmp_path, case, scale):
     '''Сверяет все узловые перемещения и реакции после чтения CNX и LDX.
 
-    Задачи example_1..6 соответствуют файлу Примеры задач на растяжение-сжатие
-    для проекта. Задачи simple_1..5 соответствуют файлу Простые задачи для
-    дополнительного тестирования процессора. Проверяется только узловое
-    решение процессора, без эпюр будущего постпроцессора.
+    Проверяет узловое решение для цепочек стержней и отдельных стержней
+    в безразмерном представлении и единицах СИ.
     '''
     with localcontext() as context:
         context.prec = 100
