@@ -62,6 +62,63 @@ class ProcessorWorkflowTests(unittest.TestCase):
             QTest.qWait(10)
         self.assertIsNotNone(self.page.result, self.page.statusLabel.text())
 
+    def _assert_module_availability(self, processor_ready: bool, postprocessor_ready: bool) -> None:
+        '''Проверяет согласованность подписей и переходов из обзора проекта.'''
+        hub = self.window.project_page
+        self.assertEqual(hub.preprocessorBadgeLabel.text(), 'Доступен')
+        self.assertTrue(hub.preprocessorButton.isEnabled())
+        for badge, button, ready in (
+            (hub.processorBadgeLabel, hub.processorButton, processor_ready),
+            (hub.postprocessorBadgeLabel, hub.postprocessorButton, postprocessor_ready),
+        ):
+            self.assertEqual(badge.text(), 'Доступен' if ready else 'Недоступен')
+            self.assertEqual(button.isEnabled(), ready)
+
+    def test_hub_unlocks_modules_after_check_and_calculation(self) -> None:
+        '''Открывает модули последовательно и обновляет обзор по завершении расчёта.'''
+        draft = self.store.create(self.root, 'Новый проект')
+        self.window._activate_project(draft)
+        self._assert_module_availability(False, False)
+        self.window.project_page.processorButton.click()
+        self.assertIs(self.window.current_page, Page.PROJECT)
+        self.window.project_page.postprocessorButton.click()
+        self.assertIs(self.window.current_page, Page.PROJECT)
+        self.window.preprocessor_page.set_model(demo_model())
+        self.window.validate_project()
+        self._assert_module_availability(True, False)
+        self.assertIn('Выполните расчёт', self.window.project_page.postprocessorCard.toolTip())
+        self.window.project_page.processorButton.click()
+        self.assertIs(self.window.current_page, Page.PROCESSOR)
+        self.window.calculate_project()
+        self.window.navigate(Page.PROJECT)
+        self._assert_module_availability(True, False)
+        self.assertIn('Дождитесь', self.window.project_page.postprocessorCard.toolTip())
+        self._calculate()
+        self.assertIs(self.window.current_page, Page.PROJECT)
+        self._assert_module_availability(True, True)
+
+    def test_hub_blocks_postprocessor_during_recalculation(self) -> None:
+        '''Не допускает просмотр прежних эпюр до завершения повторного расчёта.'''
+        self._calculate()
+        self._assert_module_availability(True, True)
+        self.window.calculate_project()
+        self._assert_module_availability(True, False)
+        self._calculate()
+        self._assert_module_availability(True, True)
+
+    def test_failed_validation_keeps_both_modules_unavailable(self) -> None:
+        '''Не открывает модули после сохранения модели без закреплений.'''
+        self._calculate()
+        self.window.navigate(Page.PREPROCESSOR)
+        editor = self.window.preprocessor_page
+        editor.supportNodeCombo.setCurrentIndex(0)
+        editor.freeSupportButton.click()
+        self._assert_module_availability(False, False)
+        self.window.validate_project()
+        self.window.navigate(Page.PROJECT)
+        self._assert_module_availability(False, False)
+        self.assertTrue(self.window.project_page.processorCard.toolTip())
+
     def test_all_steps_use_same_decimal_result(self) -> None:
         '''Показывает обе матрицы, прямой ход, уравнения и вектор delta.'''
         self._calculate()
@@ -128,6 +185,8 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self.window.navigate(Page.PROCESSOR)
         self.assertFalse(self.page.calculateButton.isEnabled())
         self.assertIsNone(self.page.result)
+        self.window.navigate(Page.PROJECT)
+        self._assert_module_availability(False, False)
 
     def test_edit_requires_successful_recheck(self) -> None:
         '''Отзывает результат после правки и разрешает запуск после проверки.'''
@@ -139,10 +198,13 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self.window.navigate(Page.PROCESSOR)
         self.assertFalse(self.page.calculateButton.isEnabled())
         self.assertIsNone(self.page.result)
+        self._assert_module_availability(False, False)
         self.window.validate_project()
+        self._assert_module_availability(True, False)
         self.window.navigate(Page.PROCESSOR)
         self.assertTrue(self.page.calculateButton.isEnabled())
         self._calculate()
+        self._assert_module_availability(True, True)
         self.assertEqual(self.page.result.model.bars[0].length_m, Decimal('4'))
 
     def test_deleted_prepared_file_blocks_at_click_without_timer(self) -> None:
@@ -152,15 +214,18 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self.assertIsNone(self.window._processor_task)
         self.assertIsNone(self.page.result)
         self.assertFalse(self.page.calculateButton.isEnabled())
+        self._assert_module_availability(False, False)
 
     def test_external_change_hides_existing_solution(self) -> None:
         '''Убирает устаревшую матрицу после внешнего изменения исходника.'''
         self._calculate()
+        self.window.navigate(Page.PROJECT)
         path = self.project.path / 'project.cn'
         path.write_bytes(path.read_bytes() + b'\n')
         self.window._watch_processor_files()
         self.assertIsNone(self.page.result)
         self.assertEqual(self.page.stateStack.currentWidget(), self.page.emptyPage)
+        self._assert_module_availability(False, False)
 
     def test_old_request_cannot_publish_into_another_project(self) -> None:
         '''Игнорирует запоздалое завершение от ранее открытого проекта.'''
@@ -171,6 +236,7 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self.window._activate_project(project)
         self.window._processor_finished(revision, old_result, 'old', '')
         self.assertIsNone(self.page.result)
+        self._assert_module_availability(False, False)
 
     def test_layout_and_synchronized_scroll_in_both_themes(self) -> None:
         '''Сохраняет доступ ко всем шагам при небольшом окне и смене темы.'''

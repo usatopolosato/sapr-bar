@@ -310,7 +310,7 @@
              <string>badge</string>
             </property>
             <property name="text">
-             <string>В разработке</string>
+             <string>Недоступен</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -441,7 +441,7 @@
              <string>badge</string>
             </property>
             <property name="text">
-             <string>В разработке</string>
+             <string>Недоступен</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>

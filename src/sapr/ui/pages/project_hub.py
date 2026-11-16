@@ -25,6 +25,7 @@ class ProjectHubPage(QWidget):
         self.processorButton.clicked.connect(self.processorRequested.emit)
         self.postprocessorButton.clicked.connect(self.postprocessorRequested.emit)
         self.returnButton.clicked.connect(self.homeRequested.emit)
+        self.set_availability(False, False, 'Выберите проект', 'Выберите проект')
 
     def set_project_name(self, name: str) -> None:
         '''Устанавливает название текущего проекта.
@@ -33,6 +34,30 @@ class ProjectHubPage(QWidget):
             name: Название рабочего пространства.
         '''
         self.projectNameLabel.setText(name)
+
+    def set_availability(
+        self, processor_ready: bool, postprocessor_ready: bool,
+        processor_message: str, postprocessor_message: str,
+    ) -> None:
+        '''Согласует метки и кнопки с готовностью расчётных модулей.
+
+        Args:
+            processor_ready: Признак актуальных проверенных исходных данных.
+            postprocessor_ready: Признак успешного расчёта текущей модели.
+            processor_message: Состояние процессора или причина недоступности.
+            postprocessor_message: Состояние постпроцессора или причина недоступности.
+        '''
+        for badge, button, card, ready, message in (
+            (self.processorBadgeLabel, self.processorButton, self.processorCard,
+             processor_ready, processor_message),
+            (self.postprocessorBadgeLabel, self.postprocessorButton, self.postprocessorCard,
+             postprocessor_ready, postprocessor_message),
+        ):
+            badge.setText('Доступен' if ready else 'Недоступен')
+            badge.setEnabled(ready)
+            button.setEnabled(ready)
+            for widget in (badge, button, card):
+                widget.setToolTip(message)
 
     def resizeEvent(self, event) -> None:
         '''Перестраивает карточки модулей для узкого окна.

@@ -197,6 +197,8 @@ class MainWindow(QMainWindow):
                 self._refresh_postprocessor()
             else:
                 self._refresh_processor()
+        elif page is Page.PROJECT:
+            self._refresh_processor()
 
     def _activate_project(self, project: Project) -> None:
         '''Загружает сохранённую модель в рабочее пространство.
@@ -257,6 +259,7 @@ class MainWindow(QMainWindow):
         self._dirty = False
         self._update_title()
         self._invalidate_processor()
+        self._refresh_processor()
         self.preprocessor_page.show_status('Черновик сохранён' if issues else 'Проект проверен и сохранён')
         return True
 
@@ -282,16 +285,37 @@ class MainWindow(QMainWindow):
         self._processor_task = None
         self.processor_page.set_availability(False, 'Проверьте проект в препроцессоре', reset=True)
         self._clear_postprocessor('Проверьте проект и выполните расчёт')
+        self._sync_module_availability(False, 'Проверьте проект в препроцессоре')
+
+    def _sync_module_availability(self, processor_ready: bool, message: str) -> None:
+        '''Обновляет карточки по проверке файлов и результату текущего расчёта.
+
+        Args:
+            processor_ready: Признак успешной проверки актуальности исходных данных.
+            message: Состояние процессора или причина недоступности.
+        '''
+        postprocessor_ready = processor_ready and self._processor_task is None and self.processor_page.result is not None
+        if not processor_ready:
+            postprocessor_message = message
+        elif self._processor_task is not None:
+            postprocessor_message = 'Дождитесь завершения расчёта'
+        elif self.processor_page.result is None:
+            postprocessor_message = 'Выполните расчёт в процессоре'
+        else:
+            postprocessor_message = 'Расчёт текущей модели выполнен'
+        self.project_page.set_availability(processor_ready, postprocessor_ready, message, postprocessor_message)
 
     def _refresh_processor(self) -> bool:
         '''Проверяет актуальность файлов и отсутствие несохранённого ввода.'''
         if self.current_project is None:
             self.processor_page.set_availability(False, 'Выберите проект')
             self._clear_postprocessor('Выберите проект')
+            self._sync_module_availability(False, 'Выберите проект')
             return False
         if self._dirty or self.preprocessor_page.has_pending_edits:
             self.processor_page.set_availability(False, 'Данные изменены. Проверьте проект в препроцессоре')
             self._clear_postprocessor('Данные изменены. Повторите проверку и расчёт')
+            self._sync_module_availability(False, 'Данные изменены. Проверьте проект в препроцессоре')
             return False
         try:
             _, fingerprint = self._store.read_for_processor(self.current_project)
@@ -302,6 +326,7 @@ class MainWindow(QMainWindow):
             prepared_exists = any((self.current_project.path / name).exists() for name in ('project.cnx', 'project.ldx'))
             self.processor_page.set_availability(False, str(error), error=self.current_project.validated or prepared_exists)
             self._clear_postprocessor(str(error), error=self.current_project.validated or prepared_exists)
+            self._sync_module_availability(False, str(error))
             return False
         changed = bool(self._processor_fingerprint and fingerprint != self._processor_fingerprint)
         self._processor_fingerprint = fingerprint
@@ -310,6 +335,7 @@ class MainWindow(QMainWindow):
             self._clear_postprocessor('Файлы изменены. Повторите расчёт')
         if self._processor_task is not None:
             self.processor_page.set_busy()
+        self._sync_module_availability(True, 'CNX и LDX проверены')
         return True
 
     def calculate_project(self) -> None:
@@ -322,6 +348,7 @@ class MainWindow(QMainWindow):
         task.signals.finished.connect(self._processor_finished)
         self._processor_task = task
         self.processor_page.set_busy()
+        self._sync_module_availability(True, 'CNX и LDX проверены')
         QThreadPool.globalInstance().start(task)
 
     def _processor_finished(self, revision: int, result, fingerprint: str, error: str) -> None:
@@ -332,14 +359,17 @@ class MainWindow(QMainWindow):
         if error:
             self.processor_page.set_availability(False, error, reset=True, error=True)
             self._clear_postprocessor(error, error=True)
+            self._sync_module_availability(False, error)
             return
         if not self._refresh_processor():
             return
         if fingerprint != self._processor_fingerprint:
             self.processor_page.set_availability(False, 'Данные изменились. Повторите проверку', reset=True)
             self._clear_postprocessor('Данные изменились. Повторите проверку и расчёт')
+            self._sync_module_availability(False, 'Данные изменились. Повторите проверку')
             return
         self.processor_page.set_result(result)
+        self._sync_module_availability(True, 'CNX и LDX проверены')
         if self.current_page is Page.POSTPROCESSOR:
             self._refresh_postprocessor()
 
@@ -411,7 +441,7 @@ class MainWindow(QMainWindow):
 
     def _watch_processor_files(self) -> None:
         '''Скрывает старые результаты после внешнего изменения файлов.'''
-        if self.current_page not in (Page.PROCESSOR, Page.POSTPROCESSOR) or self.current_project is None:
+        if self.current_page not in (Page.PROJECT, Page.PROCESSOR, Page.POSTPROCESSOR) or self.current_project is None:
             return
         try:
             signature = self._store.file_signature(self.current_project.path)

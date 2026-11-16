@@ -80,6 +80,10 @@ QFrame[role="card"], QFrame[role="inspector"], #canvasCard, #dataCard, #inspecto
 QFrame[role="card"] QLabel, QFrame[role="inspector"] QLabel {
     border: none;
 }
+QLabel[role="badge"]:disabled {
+    color: ${muted};
+    background: ${surface};
+}
 QFrame[frameShape="4"] {
     color: ${border};
     background: ${border};
