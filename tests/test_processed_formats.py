@@ -13,9 +13,9 @@ from src.sapr.storage.processed_formats import encode_processed, processed_match
 REFERENCE_CNX = '''
 3 2 2
 
-0 0
-1.25 0
-3.75 0
+0
+1.25
+3.75
 
 1 2 1
 2 3 2
@@ -145,8 +145,8 @@ def test_coordinate_and_load_precision_survive_low_decimal_context(two_bars):
         context.prec = 4
         construction, loading = encode_processed(model)
         assert processed_matches(construction, construction)
-    coordinates = construction.split()[3:9]
-    assert Decimal(coordinates[4]) == Decimal('12345678901234567890.12345678900000123456789012345')
+    coordinates = construction.split()[3:6]
+    assert Decimal(coordinates[2]) == Decimal('12345678901234567890.12345678900000123456789012345')
     assert Decimal(loading.split()[6]) == model.nodal_forces[1]
     assert Decimal(loading.split()[10]) == model.distributed_loads[0]
     assert Decimal(loading.split()[12]) == model.distributed_loads[1]
@@ -174,7 +174,7 @@ def test_count_field_requires_matching_integer(two_bars, replacement):
     assert not processed_matches(' '.join(tokens), construction)
 
 
-@pytest.mark.parametrize(('file_index', 'position'), [(0, 9), (1, 3), (1, 5), (1, 9)])
+@pytest.mark.parametrize(('file_index', 'position'), [(0, 6), (1, 3), (1, 5), (1, 9)])
 def test_element_numbers_require_integer_notation(two_bars, file_index, position):
     '''Номера стержней, узлов и закреплений не принимают дробную запись индекса.'''
     expected = encode_processed(two_bars)[file_index]
@@ -188,7 +188,7 @@ def test_numeric_field_rejects_invalid_or_changed_value(two_bars, replacement):
     '''Неконечные, повреждённые и изменённые значения снимают статус проверки.'''
     construction, _ = encode_processed(two_bars)
     tokens = construction.split()
-    tokens[5] = replacement
+    tokens[4] = replacement
     assert not processed_matches(' '.join(tokens), construction)
 
 

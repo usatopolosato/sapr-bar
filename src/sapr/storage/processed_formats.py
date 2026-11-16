@@ -64,7 +64,7 @@ def encode_processed(model: StructuralModel) -> tuple[str, str]:
     count = len(model.bars)
     nodes = count + 1
     construction = ['', _indices((nodes, count, count)), '']
-    construction.extend(_numbers((position, ZERO)) for position in model.node_positions_m)
+    construction.extend(_numbers((position,)) for position in model.node_positions_m)
     construction.append('')
     construction.extend(_indices((index + 1, index + 2, index + 1)) for index in range(count))
     construction.append('')
@@ -182,11 +182,7 @@ def decode_processed(construction: str, loading: str) -> StructuralModel:
     nr, ns, nc = (cn.integer() for _ in range(3))
     if not 1 <= ns <= 10000 or nr != ns + 1 or not 1 <= nc <= ns:
         raise ProjectFormatError('Неверные размеры массивов CNX')
-    positions = []
-    for _ in range(nr):
-        positions.append(cn.number())
-        if cn.number() != ZERO:
-            raise ProjectFormatError('Поддерживается только общая ось стержней')
+    positions = [cn.number() for _ in range(nr)]
     groups = []
     for index in range(ns):
         start, end, group = (cn.integer() for _ in range(3))

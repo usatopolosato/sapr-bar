@@ -106,6 +106,9 @@ def _marked_rows(lines: list[str], count_fields: int) -> tuple[list[int], list[l
                     raise ProjectFormatError(f'Неверный порядок разделов файла {kind}')
                 expected_name, expected_dimensions, _, _ = sections[next_section]
                 dimensions = re.sub(r'\s+', '', match.group(2))
+                if kind == 'CN' and len(counts) == 3 and next_section == 0 and dimensions in ('NR,1:1', 'NR,1:2'):
+                    expected_dimensions = dimensions
+                    sections = (('XR', dimensions, 0, int(dimensions[-1])), *sections[1:])
                 if match.group(1) != expected_name or dimensions != expected_dimensions:
                     raise ProjectFormatError(f'Ожидается раздел {expected_name} с размерностью {expected_dimensions}')
                 if section >= 0 and section_rows != counts[sections[section][2]]:
@@ -121,7 +124,7 @@ def _marked_rows(lines: list[str], count_fields: int) -> tuple[list[int], list[l
                 raise ProjectFormatError('Неверная строка размеров массивов')
             counts = [_integer(value) for value in values]
             if kind == 'CN' and len(counts) == 3:
-                sections = (('XR', 'NR,1:2', 0, 2), ('XS', 'NS,1:3', 1, 3),
+                sections = (('XR', 'NR,1:1', 0, 1), ('XS', 'NS,1:3', 1, 3),
                             ('XC', 'NC,0:3', 2, 4))
             elif kind == 'LD' and len(counts) == 3:
                 sections = (('NB', 'NA,0:0', 0, 1), ('QR', 'NQR,0:1', 1, 2),
@@ -195,7 +198,7 @@ def encode_sources(name: str, model: StructuralModel) -> tuple[str, str]:
         raise ProjectFormatError('Признак опоры должен быть логическим значением')
     for value in (*model.nodal_forces, *model.distributed_loads):
         decimal_text(value)
-    coordinates = [[decimal_text(position), '0'] for position in model.node_positions_m]
+    coordinates = [[decimal_text(position)] for position in model.node_positions_m]
     topology = [[str(index + 1), str(index + 2), str(index + 1)] for index in range(count)]
     characteristics: list[list[str]] = []
     for bar in model.bars:
@@ -207,7 +210,7 @@ def encode_sources(name: str, model: StructuralModel) -> tuple[str, str]:
     forces = [(index + 1, value) for index, value in enumerate(model.nodal_forces) if value]
     loads = [(index + 1, value) for index, value in enumerate(model.distributed_loads) if value]
     construction = _source_text('CN', name, ('NR', 'NS', 'NC'), (nodes, count, count), (
-        ('XR', 'NR,1:2', ('X1', 'X2'), coordinates),
+        ('XR', 'NR,1:1', ('X1',), coordinates),
         ('XS', 'NS,1:3', ('I', 'J', 'Ig'), topology),
         ('XC', 'NC,0:3', ('E', 'A', '[Sp]', '[Sc]'), characteristics),
     ))
@@ -242,8 +245,10 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
     if len(rows) != nr + ns + nc:
         raise ProjectFormatError('Число строк CN не совпадает с размерами массивов')
     coordinates: list[Decimal] = []
+    coordinate_width = len(rows[0]) if nr else 1
     for row in rows[:nr]:
-        if len(row) != 2 or _decimal(row[1]) != 0:
+        if (coordinate_width not in ((1, 2) if compact else (2,)) or len(row) != coordinate_width
+                or (coordinate_width == 2 and _decimal(row[1]) != 0)):
             raise ProjectFormatError('Узлы должны лежать на общей оси x')
         coordinates.append(_decimal(row[0]))
     if coordinates and coordinates[0] != 0:

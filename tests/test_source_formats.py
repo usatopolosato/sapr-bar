@@ -125,12 +125,32 @@ COMPACT_LD = '''LD: AXIAL
 '''
 
 
+AXIAL_CN = '''CN: AXIAL
+************* NR NS NC ******************************************************
+               2  1  1
+******** XR(NR,1:1) *********************************************************
+*       X1                                                                  *
+*****************************************************************************
+=01     0
+=02     1.234
+******** XS(NS,1:3) *********************************************************
+*       I J Ig                                                              *
+*****************************************************************************
+=01     1 2 1
+******** XC(NC,0:3) *********************************************************
+*       E A [Sp] [Sc]                                                       *
+*****************************************************************************
+=01     2e11 1e-3 1e8 1e8
+*** CN: End *****************************************************************
+'''
+
+
 def test_reads_existing_unmarked_sources():
     '''Сохранённые раньше CN и LD открываются без миграции.'''
     assert decode_sources(PLAIN_CN, PLAIN_LD) == demo_model()
 
 
-@pytest.mark.parametrize('construction', [MARKED_CN, COMPACT_CN])
+@pytest.mark.parametrize('construction', [MARKED_CN, COMPACT_CN, AXIAL_CN])
 @pytest.mark.parametrize('loading', [MARKED_LD, COMPACT_LD])
 def test_reads_independent_fixtures_in_full_and_compact_style(construction, loading):
     '''Ручные полный и сокращённый примеры задают одинаковую осевую модель.'''
@@ -158,6 +178,8 @@ def test_old_project_migrates_to_compact_sources_only_when_saved(tmp_path):
     assert restored.model.nodal_forces == (Decimal('0'), Decimal('-1.2e4'))
     assert restored.model.distributed_loads == (Decimal('2.1e3'),)
     saved = store.save(restored, restored.model, validate=True)
+    assert 'XR(NR,1:1)' in construction.read_text(encoding='utf-8')
+    assert 'X2' not in construction.read_text(encoding='utf-8')
     assert 'XC(NC,0:3)' in construction.read_text(encoding='utf-8')
     assert 'QR(NQR,0:1)' in loading.read_text(encoding='utf-8')
     assert 'FT(' not in loading.read_text(encoding='utf-8')
@@ -170,8 +192,11 @@ def test_marked_sources_contain_named_arrays_and_original_row_markers():
     construction, loading = encode_sources('Учебный проект', demo_model())
     assert construction.startswith('CN: Учебный проект\n')
     assert loading.startswith('LD: Учебный проект\n')
-    for title in ('XR(NR,1:2)', 'XS(NS,1:3)', 'XC(NC,0:3)'):
+    for title in ('XR(NR,1:1)', 'XS(NS,1:3)', 'XC(NC,0:3)'):
         assert title in construction
+    coordinates = construction.split('XR(NR,1:1)', 1)[1].split('XS(', 1)[0]
+    assert 'X2' not in construction
+    assert [line.split()[1:] for line in coordinates.splitlines() if line.startswith('=')] == [['0'], ['2'], ['5'], ['6']]
     assert all(token not in construction for token in ('XD(', 'XM(', 'ND', 'NM', 'Type', 'Ro', 'aT', 'Iz', 'y-', 'y+'))
     assert construction.splitlines()[2].split() == ['4', '3', '3']
     characteristic_lines = construction.split('XC(NC,0:3)', 1)[1].splitlines()
@@ -194,7 +219,7 @@ def test_empty_marked_sources_preserve_required_array_headers():
     '''Пустой черновик содержит структуру массивов без фиктивных строк.'''
     construction, loading = encode_sources('Пустой', StructuralModel())
     assert not re.search(r'^=', construction + loading, flags=re.MULTILINE)
-    assert all(title in construction for title in ('XR(NR,1:2)', 'XS(NS,1:3)', 'XC(NC,0:3)'))
+    assert all(title in construction for title in ('XR(NR,1:1)', 'XS(NS,1:3)', 'XC(NC,0:3)'))
     assert 'XD(' not in construction and 'XM(' not in construction
     assert all(title in loading for title in ('NB(NA,0:0)', 'QR(NQR,0:1)', 'QS(NQS,0:1)'))
     assert 'FT(' not in loading and 'NT' not in loading
@@ -287,8 +312,10 @@ def test_legacy_loading_does_not_drop_unsupported_components(change):
 
 
 @pytest.mark.parametrize('change', [
-    lambda text: text.replace('XR(NR,1:2)', 'XS(NS,1:3)', 1),
-    lambda text: text.replace('XR(NR,1:2)', 'XR(NR,1:3)', 1),
+    lambda text: text.replace('XR(NR,1:1)', 'XS(NS,1:3)', 1),
+    lambda text: text.replace('XR(NR,1:1)', 'XR(NR,1:3)', 1),
+    lambda text: text.replace('XR(NR,1:1)', 'XR(NR,1:2)', 1),
+    lambda text: re.sub(r'(?m)^=01\s+0$', '=01 0 0', text, count=1),
     lambda text: text.replace('=01', '=02', 1),
     lambda text: re.sub(r'(?m)^=02[^\n]*\n', '', text, count=1),
     lambda text: text.replace('CN: End', 'CN: Missing'),
@@ -326,7 +353,6 @@ def test_legacy_full_characteristics_still_reject_unused_values():
 
 def test_out_of_scope_lateral_coordinates_are_rejected():
     '''Оформление внешнего файла не разрешает неподдерживаемую плоскую схему.'''
-    construction, loading = encode_sources('Поперечная координата', demo_model())
-    construction = re.sub(r'(?m)^=01\s+0\s+0$', '=01 0 1', construction, count=1)
+    construction = re.sub(r'(?m)^=01\s+0\s+0$', '=01 0 1', COMPACT_CN, count=1)
     with pytest.raises(ProjectFormatError, match='общей оси'):
-        decode_sources(construction, loading)
+        decode_sources(construction, COMPACT_LD)

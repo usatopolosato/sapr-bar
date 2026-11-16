@@ -38,7 +38,7 @@ class Project:
 class ProjectStore:
     '''Сохраняет внешний формат и формирует внутренний после диагностики.
 
-    KPR использует собственный формат JSON версии 1.
+    KPR содержит название, статус проверки и хеши исходных CN и LD.
     CNX и LDX содержат проверенные числовые массивы из исходных CN и LD.
     Оба представления ограничены последовательной осевой конструкцией.
     '''
@@ -69,11 +69,10 @@ class ProjectStore:
             if min(times['project.cnx'], times['project.ldx']) < max(times['project.cn'], times['project.ld']):
                 raise ProjectFormatError('CNX и LDX устарели. Проверьте проект в препроцессоре')
             manifest = json.loads(contents['project.kpr'].decode('utf-8-sig'))
+            self._validate_manifest(manifest)
             hashes = {name: sha256(contents[name]).hexdigest() for name in ('project.cn', 'project.ld')}
-            if (not isinstance(manifest, dict) or manifest.get('format') != 'sapr-bar-project'
-                    or type(manifest.get('version')) is not int or manifest['version'] != 1
-                    or manifest.get('units') != 'SI' or manifest.get('validated') is not True
-                    or manifest.get('prepared_format') != PROCESSED_FORMAT or manifest.get('sources') != hashes):
+            if (manifest['validated'] is not True or manifest['sources'] != hashes
+                    or manifest.get('prepared_format', PROCESSED_FORMAT) != PROCESSED_FORMAT):
                 raise ProjectFormatError('Исходные данные не прошли актуальную проверку')
             source = decode_sources(contents['project.cn'].decode('utf-8-sig'), contents['project.ld'].decode('utf-8-sig'))
             cnx, ldx = contents['project.cnx'].decode('ascii'), contents['project.ldx'].decode('ascii')
@@ -166,8 +165,7 @@ class ProjectStore:
         sources = {'project.cn': construction.encode('utf-8'), 'project.ld': loading.encode('utf-8')}
         passed = validate and not issues
         manifest = {
-            'format': 'sapr-bar-project', 'version': 1, 'name': name,
-            'units': 'SI', 'validated': passed,
+            'name': name, 'validated': passed,
             'sources': {key: sha256(value).hexdigest() for key, value in sources.items()},
         }
         contents = dict(sources)
@@ -175,7 +173,6 @@ class ProjectStore:
             cnx, ldx = encode_processed(model)
             contents['project.cnx'] = cnx.encode('ascii')
             contents['project.ldx'] = ldx.encode('ascii')
-            manifest['prepared_format'] = PROCESSED_FORMAT
         contents['project.kpr'] = self._json_bytes(manifest)
         self._write_transaction(folder, contents)
         if issues:
@@ -199,13 +196,7 @@ class ProjectStore:
         if not path.is_dir() and path.name != 'project.kpr':
             raise ProjectFormatError('Выберите файл project.kpr или папку проекта')
         manifest = self._read_json(folder / 'project.kpr')
-        if not isinstance(manifest, dict) or manifest.get('format') != 'sapr-bar-project':
-            raise ProjectFormatError('Это не файл проекта САПР BAR')
-        if type(manifest.get('version')) is not int or manifest['version'] != 1:
-            raise ProjectFormatError('Версия файла проекта не поддерживается')
-        if manifest.get('units') != 'SI' or type(manifest.get('validated')) is not bool:
-            raise ProjectFormatError('Неверные единицы или статус проекта')
-        name = self._validate_name(manifest.get('name'))
+        name = self._validate_manifest(manifest)
         sources = {filename: self._read_bytes(folder / filename) for filename in ('project.cn', 'project.ld')}
         try:
             model = decode_sources(sources['project.cn'].decode('utf-8-sig'), sources['project.ld'].decode('utf-8-sig'))
@@ -213,7 +204,7 @@ class ProjectStore:
             raise ProjectFormatError('Файлы исходных данных должны использовать UTF-8') from error
         hashes = {key: sha256(value).hexdigest() for key, value in sources.items()}
         validated = (manifest['validated'] and hashes == manifest.get('sources')
-                     and manifest.get('prepared_format') == PROCESSED_FORMAT
+                     and manifest.get('prepared_format', PROCESSED_FORMAT) == PROCESSED_FORMAT
                      and not validate_model(model))
         if validated:
             expected_cnx, expected_ldx = encode_processed(model)
@@ -223,6 +214,36 @@ class ProjectStore:
             except ProjectFormatError:
                 validated = False
         return Project(folder, name, model, bool(validated))
+
+    @classmethod
+    def _validate_manifest(cls, manifest: dict) -> str:
+        '''Проверяет краткий KPR и служебные поля прежних проектов.
+
+        Args:
+            manifest: Данные JSON из файла проекта.
+
+        Returns:
+            Допустимое название проекта.
+
+        Raises:
+            ProjectFormatError: Обязательные поля повреждены или версия неизвестна.
+        '''
+        if not isinstance(manifest, dict):
+            raise ProjectFormatError('KPR должен содержать объект JSON')
+        if 'format' in manifest and manifest['format'] != 'sapr-bar-project':
+            raise ProjectFormatError('Это не файл проекта САПР BAR')
+        if 'version' in manifest and (type(manifest['version']) is not int or manifest['version'] != 1):
+            raise ProjectFormatError('Версия файла проекта не поддерживается')
+        if 'units' in manifest and manifest['units'] != 'SI':
+            raise ProjectFormatError('Поддерживаются только единицы СИ')
+        if type(manifest.get('validated')) is not bool:
+            raise ProjectFormatError('Статус validated должен быть true или false')
+        sources = manifest.get('sources')
+        if (not isinstance(sources, dict) or set(sources) != {'project.cn', 'project.ld'}
+                or any(not isinstance(value, str) or re.fullmatch(r'[0-9a-f]{64}', value) is None
+                       for value in sources.values())):
+            raise ProjectFormatError('В sources нужны хеши SHA256 файлов project.cn и project.ld')
+        return cls._validate_name(manifest.get('name'))
 
     @staticmethod
     def _validate_name(name: str) -> str:
@@ -238,7 +259,7 @@ class ProjectStore:
 
     @staticmethod
     def _json_bytes(value: dict) -> bytes:
-        '''Кодирует версионируемую структуру в UTF-8 без округления чисел.'''
+        '''Кодирует структуру проекта в UTF-8 с отступами.'''
         return (json.dumps(value, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
 
     def _read_bytes(self, path: Path) -> bytes:

@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from decimal import Decimal, localcontext
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -25,6 +26,98 @@ def test_empty_project_and_validated_round_trip(tmp_path):
     assert restored == project
     assert restored.model.supports == (False, True, False, True)
     assert {path.suffix for path in project.path.iterdir()} == {'.cn', '.ld', '.kpr', '.cnx', '.ldx'}
+
+
+@pytest.mark.parametrize('validate', [False, True])
+def test_manifest_contains_only_name_status_and_source_hashes(tmp_path, validate):
+    '''Записывает краткий KPR с хешами фактически сохранённых исходников.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Новый проект'), demo_model(), validate=validate)
+    expected = {
+        'name': 'Новый проект',
+        'validated': validate,
+        'sources': {name: sha256((project.path / name).read_bytes()).hexdigest()
+                    for name in ('project.cn', 'project.ld')},
+    }
+    assert json.loads(project.project_file.read_text(encoding='utf-8')) == expected
+    assert store.load(project.path) == project
+    if validate:
+        assert store.read_for_processor(project)[0] == project.model
+    else:
+        assert not (project.path / 'project.cnx').exists()
+        assert not (project.path / 'project.ldx').exists()
+
+
+def test_legacy_manifest_is_read_without_changes_and_shortened_on_save(tmp_path):
+    '''Открывает прежний KPR без записи и сокращает его при сохранении.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Прежний KPR'), demo_model(), validate=True)
+    manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+    manifest.update(format='sapr-bar-project', version=1, units='SI', prepared_format='sapr-bar-numeric-axial-v2')
+    project.project_file.write_text(json.dumps(manifest, ensure_ascii=False), encoding='utf-8')
+    original = {path.name: path.read_bytes() for path in project.path.iterdir()}
+    restored = store.load(project.path)
+    assert restored == project
+    assert store.read_for_processor(restored)[0] == project.model
+    assert {path.name: path.read_bytes() for path in project.path.iterdir()} == original
+    saved = store.save(restored, restored.model, validate=True)
+    assert set(json.loads(saved.project_file.read_text(encoding='utf-8'))) == {'name', 'validated', 'sources'}
+    assert store.read_for_processor(saved)[0] == project.model
+
+
+@pytest.mark.parametrize(('key', 'value'), [
+    ('name', None), ('validated', 1), ('validated', 'true'), ('validated', None),
+    ('sources', None), ('sources', []), ('sources', {}),
+    ('sources', {'project.cn': '0' * 64}),
+    ('sources', {'project.cn': 'broken', 'project.ld': '0' * 64}),
+    ('sources', {'project.cn': 0, 'project.ld': '0' * 64}),
+    ('format', 'other'), ('version', True), ('version', 2), ('units', 'mm'),
+])
+def test_bad_manifest_fields_block_opening_and_calculation(tmp_path, key, value):
+    '''Не принимает повреждённый статус, хеши или несовместимые старые поля.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Поля KPR'), demo_model(), validate=True)
+    manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+    manifest[key] = value
+    project.project_file.write_text(json.dumps(manifest), encoding='utf-8')
+    with pytest.raises(ProjectFormatError):
+        store.load(project.path)
+    with pytest.raises(ProjectFormatError):
+        store.read_for_processor(project)
+
+
+def test_source_hash_mismatch_blocks_calculation_in_short_manifest(tmp_path):
+    '''Отметка true не разрешает расчёт при несовпадении хеша исходника.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Хеши'), demo_model(), validate=True)
+    manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
+    manifest['sources']['project.cn'] = '0' * 64
+    project.project_file.write_text(json.dumps(manifest), encoding='utf-8')
+    assert not store.load(project.path).validated
+    with pytest.raises(ProjectFormatError, match='актуальную проверку'):
+        store.read_for_processor(project)
+
+
+def test_two_coordinate_prepared_file_requires_new_validation(tmp_path):
+    '''Не использует старый CNX с X2 и обновляет его лишь после проверки.'''
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Прежние координаты'), demo_model(), validate=True)
+    path = project.path / 'project.cnx'
+    records = path.read_text(encoding='ascii').splitlines()
+    coordinates = [index for index, row in enumerate(records) if row.strip()][1:5]
+    for index in coordinates:
+        records[index] += ' 0.0000000000000000e+00'
+    path.write_text('\n'.join(records) + '\n', encoding='ascii')
+    original = {item.name: item.read_bytes() for item in project.path.iterdir()}
+    restored = store.load(project.path)
+    assert restored.model == project.model
+    assert not restored.validated
+    with pytest.raises(ProjectFormatError, match='не соответствуют'):
+        store.read_for_processor(restored)
+    assert {item.name: item.read_bytes() for item in project.path.iterdir()} == original
+    checked = store.save(restored, restored.model, validate=True)
+    assert store.read_for_processor(checked)[0] == project.model
+    assert all(len(row.split()) == 1 for row in path.read_text(encoding='ascii').splitlines()[3:7])
 
 
 def test_create_builds_missing_parent_directories(tmp_path, monkeypatch):
@@ -188,7 +281,7 @@ def test_old_json_prepared_data_requires_a_new_check(tmp_path):
     store = ProjectStore()
     project = store.save(store.create(tmp_path, 'Старая версия'), demo_model(), validate=True)
     manifest = json.loads(project.project_file.read_text(encoding='utf-8'))
-    manifest.pop('prepared_format')
+    manifest.pop('prepared_format', None)
     project.project_file.write_text(json.dumps(manifest), encoding='utf-8')
     for filename in ('project.cnx', 'project.ldx'):
         (project.path / filename).write_text('{"version": 1, "units": "SI"}', encoding='utf-8')
@@ -259,10 +352,10 @@ LDX
     saved = store.save(restored, restored.model, validate=True)
     assert store.load(saved.path) == saved
     assert saved.validated
-    assert json.loads(saved.project_file.read_text(encoding='utf-8'))['prepared_format'] == 'sapr-bar-numeric-axial-v2'
+    assert set(json.loads(saved.project_file.read_text(encoding='utf-8'))) == {'name', 'validated', 'sources'}
     cnx = (saved.path / 'project.cnx').read_text(encoding='ascii').split()
     ldx = (saved.path / 'project.ldx').read_text(encoding='ascii').split()
-    assert cnx[:3] == ['2', '1', '1'] and len(cnx) == 15
+    assert cnx[:3] == ['2', '1', '1'] and len(cnx) == 13
     assert ldx[:3] == ['1', '1', '1'] and len(ldx) == 9
 
 
