@@ -1,0 +1,39 @@
+Сборка САПР BAR для Windows
+
+Требуются Windows x64, Python 3.11 x64 и Inno Setup 7.
+Версии Python-зависимостей закреплены в packaging/requirements.txt.
+Версия и автор приложения заданы в src/sapr/metadata.py.
+
+Из корня репозитория:
+python -m venv .venv-build
+.venv-build\Scripts\python.exe -m pip install -r packaging\requirements.txt
+.venv-build\Scripts\python.exe scripts\build_windows.py --iscc "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
+
+Укажите фактический путь к ISCC.exe, если Inno Setup установлен иначе.
+Скрипт создаёт временные данные в build, готовые файлы - в dist.
+Примеры копируются как CN, LD, KPR с validated=false. Исходные проекты
+пользователя не изменяются, их CNX, LDX и отчёты в установщик не входят.
+
+Результат:
+dist/SAPR-BAR-0.1.0-portable.exe - самостоятельный EXE.
+dist/SAPR-BAR-0.1.0-setup.exe - установщик с удалением программы и ярлыками.
+dist/SAPR BAR/SAPR BAR.exe - приложение с библиотеками в соседнем _internal.
+dist/SHA256SUMS.txt - контрольные суммы двух распространяемых EXE.
+
+Проверка готовой сборки:
+"dist\SAPR BAR\SAPR BAR.exe" --smoke-test "D:\проверка\result.json"
+Так же проверяется portable.exe или установленная копия.
+Режим создаёт временный проект, сохраняет, проверяет, рассчитывает,
+открывает постпроцессор, экспортирует отчёт и сохраняет снимки двух тем.
+Код завершения 0 и поле ok=true означают успешную проверку.
+Пользовательские проекты и настройки режима проверки не используются.
+
+Сборка упаковывает интерпретатор Python, PyQt6, Qt, формы и стили.
+Она не переводит вычисления Decimal в машинную арифметику float.
+Криптографическая подпись EXE не настроена: сертификат не предоставлен.
+SHA256 проверяет целостность файла, но не заменяет подпись издателя.
+
+Официальные сведения об инструментах:
+https://pyinstaller.org/en/stable/spec-files.html
+https://jrsoftware.org/inno-setup/downloads
+https://jrsoftware.org/inno-setup/documentation/topic_setupcmdline.htm

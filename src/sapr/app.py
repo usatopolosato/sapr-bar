@@ -4,11 +4,13 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QLocale, QSettings
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtGui import QFont, QFontDatabase, QIcon
 from PyQt6.QtWidgets import QApplication
 
 from .ui.main_window import MainWindow
 from .ui.theme import ThemeManager
+from .ui.loader import RESOURCE_ROOT
+from .metadata import APP_ID, AUTHOR, NAME, VERSION
 
 
 def create_application(
@@ -28,8 +30,10 @@ def create_application(
         Настроенный экземпляр QApplication.
     '''
     app = QApplication(arguments if arguments is not None else sys.argv)
-    app.setApplicationName('САПР BAR')
-    app.setOrganizationName('usatopolosato')
+    app.setApplicationName(NAME)
+    app.setApplicationVersion(VERSION)
+    app.setOrganizationName(AUTHOR)
+    app.setWindowIcon(QIcon(str(RESOURCE_ROOT / 'icons' / 'app.ico')))
     app.setStyle('Fusion')
     QLocale.setDefault(QLocale(QLocale.Language.Russian, QLocale.Country.Russia))
     if 'Segoe UI' not in QFontDatabase.families():
@@ -48,6 +52,12 @@ def main() -> int:
     Returns:
         Код завершения Qt.
     '''
+    if '--smoke-test' in sys.argv:
+        from .smoke import run_smoke_test
+        return run_smoke_test(Path(sys.argv[sys.argv.index('--smoke-test') + 1]))
+    if sys.platform == 'win32':
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = create_application()
     window = MainWindow(app.theme_manager)
     available = app.primaryScreen().availableGeometry()

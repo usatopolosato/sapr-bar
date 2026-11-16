@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>САПР BAR - usatopolosato</string>
+   <string>САПР BAR - Usatopolosato</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="rootLayout">
@@ -280,7 +280,7 @@
          <item>
           <widget class="QLabel" name="authorLabel">
            <property name="text">
-            <string>usatopolosato</string>
+            <string>Usatopolosato</string>
            </property>
            <property name="role" stdset="0">
             <string>author</string>

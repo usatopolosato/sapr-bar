@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sapr-bar"
-version = "0.1.0"
+dynamic = ["version"]
 description = "САПР стержневых систем: растяжение и сжатие"
 requires-python = ">=3.11"
 dependencies = ["PyQt6>=6.6.1,<7"]
-authors = [{name = "usatopolosato"}]
+authors = [{name = "Usatopolosato"}]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
@@ -19,5 +19,8 @@ sapr-bar = "sapr.app:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.dynamic]
+version = {attr = "sapr.metadata.VERSION"}
+
 [tool.setuptools.package-data]
-sapr = ["resources/forms/*.ui", "resources/styles/*.qss"]
+sapr = ["resources/forms/*.ui", "resources/styles/*.qss", "resources/icons/*.ico", "resources/icons/*.png"]
