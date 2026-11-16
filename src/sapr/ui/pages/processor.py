@@ -8,6 +8,7 @@ from ..feedback import show_feedback
 from ..loader import load_form
 from ..math_notation import formula_html
 from ..widgets.back_substitution import BackSubstitutionModel
+from ..widgets.forward_elimination import ForwardEliminationDetails
 from ..widgets.linear_system import LinearSystemView, NodeTableModel, configure_result_table, number_text
 
 
@@ -22,9 +23,12 @@ class ProcessorPage(QWidget):
         load_form('processor.ui', self)
         self.result: ProcessorResult | None = None
         self._node_models = []
+        self._forward_details = None
         self.system_view = LinearSystemView(self)
-        self.matrixLayout.insertWidget(0, self.system_view, 1)
+        self.matrixLayout.insertWidget(1, self.system_view, 1)
         self.matrixLayout.setStretch(1, 1)
+        self.matrixLayout.setStretch(2, 1)
+        self.matrixLayout.setStretch(3, 1)
         self.matrixLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.backSubstitutionPanel.hide()
         self.displacementsLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -32,7 +36,22 @@ class ProcessorPage(QWidget):
         self.displacementsView.setMaximumWidth(420)
         self.pageLayout.setStretch(2, 1)
         self.solutionLayout.setStretch(3, 1)
-        self.cardLayout.setStretch(2, 1)
+        self.cardLayout.setStretch(3, 1)
+        for name in ('Прямой ход', 'Обратный ход'):
+            self.sweepBar.addTab(name)
+        self.sweepBar.setExpanding(False)
+        self.sweepBar.setDrawBase(False)
+        self.sweepBar.currentChanged.connect(self._show_sweep)
+        self.forwardRowSpin.setKeyboardTracking(False)
+        self.forwardRowSpin.valueChanged.connect(self._refresh_forward)
+        self.forwardStateCombo.currentIndexChanged.connect(self._refresh_forward)
+        self.previousForwardButton.clicked.connect(lambda: self.forwardRowSpin.setValue(self.forwardRowSpin.value() - 1))
+        self.nextForwardButton.clicked.connect(lambda: self.forwardRowSpin.setValue(self.forwardRowSpin.value() + 1))
+        self.forwardRowSpin.setToolTip('Выберите изменяемую строку. Первая строка служит опорной')
+        self.forwardDetails.setToolTip('Числа взяты из расчёта Decimal. Формат Точно показывает полную рабочую точность')
+        self.forwardControls.hide()
+        self.forwardDetails.hide()
+        self.sweepBar.hide()
         for name in ('Сборка', 'Закрепления', 'Прогонка', 'Уравнения', 'Перемещения'):
             self.stepsBar.addTab(name)
             self.stepCombo.addItem(name)
@@ -73,6 +92,7 @@ class ProcessorPage(QWidget):
         if reset or not ready:
             self.result = None
         if self.result is None:
+            self._forward_details = None
             self.stateStack.setCurrentWidget(self.emptyPage)
             prompt = 'Нажмите Рассчитать' if ready else message
             self.emptyLabel.setText('Проверьте проект в препроцессоре' if error else prompt)
@@ -86,6 +106,11 @@ class ProcessorPage(QWidget):
     def set_result(self, result: ProcessorResult) -> None:
         '''Публикует согласованные этапы одного завершённого расчёта.'''
         self.result = result
+        self.forwardRowSpin.blockSignals(True)
+        self.forwardRowSpin.setRange(2, len(result.displacements))
+        self.forwardRowSpin.setSuffix(f' из {len(result.displacements)}')
+        self.forwardRowSpin.setValue(2)
+        self.forwardRowSpin.blockSignals(False)
         self.calculateButton.setEnabled(True)
         self.calculateButton.setText('Рассчитать')
         show_feedback(self.statusLabel, f'Расчёт выполнен   Стержней {len(result.model.bars)}   Узлов {len(result.displacements)}')
@@ -103,6 +128,7 @@ class ProcessorPage(QWidget):
         for model in self._node_models:
             model.deleteLater()
         compact = self.numberFormatCombo.currentIndex() == 0
+        self._forward_details = ForwardEliminationDetails(self.result, compact)
         equations = NodeTableModel(self.result, True, compact, self)
         displacements = NodeTableModel(self.result, False, compact, self)
         back_substitution = BackSubstitutionModel(self.result, compact, self)
@@ -136,20 +162,52 @@ class ProcessorPage(QWidget):
         descriptions = (
             'k = E * A / L   Вклад q в каждый конец стержня равен q * L / 2',
             'Закреплённые узлы ' + fixed,
-            'Матрица после прямого хода   Обратный ход от последнего узла к первому',
+            'Исключение коэффициентов по строкам и подстановка перемещений',
             'Уравнения после закреплений   k = E * A / L',
             'Перемещения глобальных узлов в метрах',
         )
         self.stepTitleLabel.setText(titles[index])
         self.stepDescriptionLabel.setText(descriptions[index])
         self.stepDescriptionLabel.setToolTip(descriptions[index])
-        self.backSubstitutionPanel.setVisible(index == 2)
+        self.stepDescriptionLabel.setVisible(index != 2)
+        self.sweepBar.setVisible(index == 2)
+        self.backSubstitutionPanel.setVisible(index == 2 and self.sweepBar.currentIndex() == 1)
+        self.forwardControls.setVisible(index == 2 and self.sweepBar.currentIndex() == 0)
+        self.forwardDetails.setVisible(index == 2 and self.sweepBar.currentIndex() == 0)
         if index < 3:
             self.stepsStack.setCurrentWidget(self.matrixPage)
+            if index == 2:
+                self._show_sweep(self.sweepBar.currentIndex())
+                return
             system = (self.result.original, self.result.constrained, self.result.eliminated)[index]
             self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 0)
         else:
             self.stepsStack.setCurrentWidget(self.equationsPage if index == 3 else self.displacementsPage)
+
+    def _show_sweep(self, index: int) -> None:
+        '''Переключает прямой ход по строкам и обратную подстановку.'''
+        if self.result is None or self.stepsBar.currentIndex() != 2:
+            return
+        self.forwardControls.setVisible(index == 0)
+        self.forwardDetails.setVisible(index == 0)
+        self.backSubstitutionPanel.setVisible(index == 1)
+        if index == 0:
+            self._refresh_forward()
+        else:
+            self.system_view.set_system(self.result.eliminated, self.numberFormatCombo.currentIndex() == 0)
+
+    def _refresh_forward(self, index: int = 0) -> None:
+        '''Показывает выбранное исключение и матрицу до либо после операции.'''
+        if self.result is None or self._forward_details is None or self.stepsBar.currentIndex() != 2 or self.sweepBar.currentIndex() != 0:
+            return
+        row = self.forwardRowSpin.value() - 1
+        completed = row if self.forwardStateCombo.currentIndex() == 1 else row - 1
+        system = self._forward_details.trace.system_after(completed)
+        self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 0)
+        self.system_view.focus_elimination(row)
+        self.forwardDetails.setHtml(self._forward_details.details_html(row))
+        self.previousForwardButton.setEnabled(row > 1)
+        self.nextForwardButton.setEnabled(row < len(self.result.displacements) - 1)
 
     def _node_selected(self, current, previous) -> None:
         '''Выводит символическое уравнение и подстановку для выбранного узла.'''
@@ -186,3 +244,10 @@ class ProcessorPage(QWidget):
         compact = self.width() < 900
         self.stepsBar.setVisible(not compact)
         self.stepCombo.setVisible(compact)
+        self.forwardControlsLayout.addWidget(self.forwardStateCombo, 1 if compact else 0,
+                                             0 if compact else 3, 1, 3 if compact else 1)
+        self.forwardControlsLayout.setColumnStretch(1, 1 if compact else 0)
+        self.forwardControlsLayout.setColumnStretch(3, 0 if compact else 1)
+        for button in (self.previousForwardButton, self.nextForwardButton):
+            button.setMaximumWidth(16777215 if compact else 110)
+        self.forwardRowSpin.setMaximumWidth(16777215 if compact else 200)

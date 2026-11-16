@@ -270,11 +270,11 @@ QLabel[role="formula"] {
 #ProcessorPage QTableView::item {
     padding: 6px;
 }
-#backSubstitutionPanel, #backSubstitutionDetails {
+#backSubstitutionPanel, #backSubstitutionDetails, #forwardControls, #forwardDetails {
     background: ${panel};
     border: none;
 }
-#backSubstitutionDetails {
+#backSubstitutionDetails, #forwardDetails {
     color: ${text};
     font-family: "Consolas";
     font-size: 15px;

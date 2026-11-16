@@ -40,6 +40,7 @@ class SystemTableModel(QAbstractTableModel):
     def __init__(self, system: LinearSystem, kind: str, compact: bool, parent=None) -> None:
         super().__init__(parent)
         self.system, self.kind, self.compact = system, kind, compact
+        self.elimination_row = None
 
     def rowCount(self, parent=QModelIndex()) -> int:
         '''Возвращает число глобальных узлов.'''
@@ -55,6 +56,10 @@ class SystemTableModel(QAbstractTableModel):
             return None
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return Qt.AlignmentFlag.AlignCenter
+        if role == Qt.ItemDataRole.FontRole and self.kind == 'matrix' and index.row() == self.elimination_row and index.column() == index.row() - 1:
+            font = QFont('Consolas', 10)
+            font.setBold(True)
+            return font
         if role not in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole, Qt.ItemDataRole.UserRole):
             return None
         row, column = index.row(), index.column()
@@ -173,6 +178,15 @@ class LinearSystemView(QWidget):
         fits = model.columnCount() * 95 <= self.matrixView.viewport().width()
         mode = QHeaderView.ResizeMode.Stretch if fits else QHeaderView.ResizeMode.Interactive
         self.matrixView.horizontalHeader().setSectionResizeMode(mode)
+
+    def focus_elimination(self, row: int) -> None:
+        '''Выделяет изменяемую строку и делает исключаемый коэффициент заметным.'''
+        model = self.matrixView.model()
+        model.elimination_row = row
+        target = model.index(row, row - 1)
+        model.dataChanged.emit(target, target, [Qt.ItemDataRole.FontRole])
+        self.matrixView.setCurrentIndex(target)
+        self.matrixView.scrollTo(target)
 
     def _sync_viewports(self, *args) -> None:
         '''Выравнивает высоту областей при появлении полосы прокрутки у матрицы.'''
