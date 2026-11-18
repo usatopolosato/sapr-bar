@@ -6,10 +6,10 @@ from unittest.mock import patch
 
 import pytest
 
-from src.sapr.domain import demo_model
+from src.sapr.domain import Bar, StructuralModel, demo_model
 from src.sapr.domain.postprocessor import AxialPostprocessor
 from src.sapr.domain.processor import AxialProcessor
-from src.sapr.formatting import format_quantity
+from src.sapr.formatting import format_result
 from src.sapr.storage import ProjectStore
 from src.sapr.storage.result_report import ResultReport
 
@@ -34,12 +34,12 @@ def test_report_contains_readable_tables_without_changing_source_values(checked_
     assert path == project.path / 'project.txt'
     text = path.read_text(encoding='utf-8')
     for expected in ('Стержни', 'Узлы', 'Формулы', 'Экстремумы', 'Проверка прочности', 'Сечения',
-                     'округлены только для чтения', format_quantity(displacements[2], compact=True)):
+                     'округлены только для чтения', format_result(displacements[2])):
         assert expected in text
     assert fingerprint not in text
     assert max(map(len, text.splitlines())) <= 100
     for bar in result.bars:
-        assert format_quantity(bar.extrema('u')[1].displacement_m, compact=True) in text
+        assert format_result(bar.extrema('u')[1].displacement_m) in text
         assert bar.stress_status in text
     assert result.processor.displacements == displacements
     assert before == {name: (project.path / name).read_bytes() for name in ProjectStore.FILES}
@@ -112,3 +112,68 @@ def test_failed_replace_preserves_previous_report(checked_result):
         ResultReport().write(project, result, fingerprint)
     assert target.read_text(encoding='utf-8') == 'Прежний отчёт'
     assert not list(project.path.glob('.report-*.tmp'))
+
+
+@pytest.mark.parametrize('force', ['-12', '0', '12'])
+@pytest.mark.parametrize('q', ['0', '8', '-8'])
+def test_extrema_include_minimum_and_maximum_for_every_quantity(force, q):
+    '''Даже постоянная величина имеет отдельные строки минимума и максимума.'''
+    model = StructuralModel(bars=(Bar(D(1), D(1), D(1), D(1)),),
+                            nodal_forces=(D(0), D(force)), distributed_loads=(D(q),),
+                            supports=(True, False))
+    result = AxialPostprocessor().analyze(AxialProcessor().solve(model))
+    tables = list(ResultReport._tables(result, 10, None, False))
+    _, headers, rows, marked = next(table for table in tables if table[0].startswith('Экстремумы'))
+    assert headers == ('Величина', 'Экстремум', 'x, м', 'Значение', 'Результат')
+    assert len(rows) == 6
+    assert marked == (3, 4)
+    for index, label in enumerate(('N, Н', 'σ, Па', 'u, м')):
+        minimum, maximum = rows[2 * index:2 * index + 2]
+        assert minimum[:2] == (label, 'Минимум')
+        assert maximum[:2] == (label, 'Максимум')
+        assert minimum[3] <= maximum[3]
+    assert rows[0][3] == D(force) + min(D(0), D(q))
+    assert rows[1][3] == D(force) + max(D(0), D(q))
+    if q == '0':
+        assert rows[0][2:] == rows[1][2:]
+        assert rows[2][2:] == rows[3][2:]
+        assert rows[4][3] == min(D(0), D(force))
+        assert rows[5][3] == max(D(0), D(force))
+    for row in rows[2:4]:
+        assert row[-1] == ('Превышение' if abs(row[3]) > D(1) else '')
+
+
+@pytest.mark.parametrize('file_format', ['txt', 'html'])
+def test_export_labels_both_extrema_including_coincident_values(tmp_path, file_format):
+    '''В обоих форматах сохраняются все шесть строк и подсветка напряжений.'''
+    model = StructuralModel(bars=(Bar(D(1), D(1), D(1), D(1)),),
+                            nodal_forces=(D(0), D(-12)), distributed_loads=(D(0),),
+                            supports=(True, False))
+    store = ProjectStore()
+    project = store.save(store.create(tmp_path, 'Экстремумы'), model, validate=True)
+    fingerprint = store.read_for_processor(project)[1]
+    result = AxialPostprocessor().analyze(AxialProcessor().solve(model))
+    path = ResultReport().write(project, result, fingerprint, file_format=file_format,
+                                diagram='<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+    text = path.read_text(encoding='utf-8')
+    table = text.split('Экстремумы - стержень 1', 1)[1].split('Сечения - стержень 1', 1)[0]
+    assert table.count('Минимум') == 3
+    assert table.count('Максимум') == 3
+    assert table.count('Превышение') == 2
+    assert table.count('N, Н') == table.count('σ, Па') == table.count('u, м') == 2
+    assert table.count('-12.000000') == 5
+    if file_format == 'html':
+        assert table.count('<td class="exceeded">-12.000000</td>') == 2
+        assert table.count('<td class="exceeded">Превышение</td>') == 2
+
+
+def test_extrema_report_keeps_internal_displacement_maximum():
+    '''Координата внутреннего максимума не заменяется концом стержня.'''
+    model = StructuralModel(bars=(Bar(D(1), D(1), D(1), D(1)),),
+                            nodal_forces=(D(0), D(0)), distributed_loads=(D(8),),
+                            supports=(True, True))
+    result = AxialPostprocessor().analyze(AxialProcessor().solve(model))
+    rows = next(table[2] for table in ResultReport._tables(result, 10, None, False)
+                if table[0].startswith('Экстремумы'))
+    assert rows[4] == ('u, м', 'Минимум', D(0), D(0), '')
+    assert rows[5] == ('u, м', 'Максимум', D('0.5'), D(1), '')

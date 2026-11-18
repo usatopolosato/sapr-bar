@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -147,6 +148,9 @@ class ProjectStore:
     def save(self, project: Project, model: StructuralModel, *, validate: bool = False) -> Project:
         '''Сохраняет исходные данные и при необходимости проверяет модель.
 
+        Неизменённые файлы не перезаписываются. Обычное сохранение сохраняет
+        действующую проверку, если исходные и обработанные данные актуальны.
+
         Args:
             project: Проект с существующей папкой.
             model: Новые исходные данные.
@@ -166,6 +170,14 @@ class ProjectStore:
         issues = validate_model(model) if validate else ()
         construction, loading = encode_sources(name, model)
         sources = {'project.cn': construction.encode('utf-8'), 'project.ld': loading.encode('utf-8')}
+        if not validate:
+            try:
+                if all(self._read_bytes(folder / key) == value for key, value in sources.items()):
+                    saved = Project(folder, name, model, True)
+                    self.read_for_processor(saved)
+                    return saved
+            except (OSError, ValueError):
+                pass
         passed = validate and not issues
         manifest = {
             'name': name, 'validated': passed,
@@ -294,30 +306,54 @@ class ProjectStore:
         return processed_matches(actual, expected)
 
     def _write_transaction(self, folder: Path, contents: dict[str, bytes]) -> None:
-        '''Заменяет известные файлы с откатом при ошибке ввода вывода.'''
+        '''Заменяет только изменённые файлы с откатом содержимого и дат.'''
         for name in self.FILES:
             target = folder / name
             if target.is_symlink() or target.resolve().parent != folder:
                 raise ProjectFormatError('Файл проекта выходит за пределы папки')
             if target.exists() and not target.is_file():
                 raise ProjectFormatError(f'{name} должен быть обычным файлом')
+        for name, content in contents.items():
+            if len(content) > self.MAX_FILE_BYTES:
+                raise ProjectFormatError(f'Файл {name} превышает допустимый размер')
+        original = {name for name in self.FILES if (folder / name).exists()}
+        replacements = {name for name, content in contents.items()
+                        if name not in original or self._read_bytes(folder / name) != content}
+        removed = original - contents.keys()
+        source_names = {'project.cn', 'project.ld'}
+        prepared_names = {'project.cnx', 'project.ldx'} & contents.keys()
+        if prepared_names:
+            if source_names & replacements:
+                replacements.update(prepared_names)
+            else:
+                source_time = max((folder / name).stat().st_mtime_ns for name in source_names)
+                replacements.update(name for name in prepared_names & original
+                                    if (folder / name).stat().st_mtime_ns < source_time)
+        if not replacements and not removed:
+            return
         with tempfile.TemporaryDirectory(prefix='.save-', dir=folder) as temporary:
             stage = Path(temporary)
-            original = {name for name in self.FILES if (folder / name).exists()}
-            for name in original:
-                shutil.copyfile(folder / name, stage / f'{name}.backup')
+            for name in original & (replacements | removed):
+                shutil.copy2(folder / name, stage / f'{name}.backup')
             for name, content in contents.items():
-                if len(content) > self.MAX_FILE_BYTES:
-                    raise ProjectFormatError(f'Файл {name} превышает допустимый размер')
-                (stage / name).write_bytes(content)
+                if name in replacements:
+                    (stage / name).write_bytes(content)
+            if prepared_names:
+                source_time = max(((stage if name in replacements else folder) / name).stat().st_mtime_ns
+                                  for name in source_names)
+                for name in prepared_names & replacements:
+                    target = stage / name
+                    stamp = target.stat()
+                    if stamp.st_mtime_ns < source_time:
+                        os.utime(target, ns=(stamp.st_atime_ns, source_time))
             changed: list[str] = []
             try:
                 for name in self.FILES:
                     target = folder / name
-                    if name in contents:
+                    if name in replacements:
                         (stage / name).replace(target)
                         changed.append(name)
-                    elif target.exists():
+                    elif name in removed:
                         target.unlink()
                         changed.append(name)
             except OSError:

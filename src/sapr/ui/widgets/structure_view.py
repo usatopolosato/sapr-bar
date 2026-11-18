@@ -106,7 +106,7 @@ class StructureView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setBackgroundBrush(QColor(self._colors.canvas))
-        self.setAccessibleName('Интерактивная схема стержневой конструкции')
+        self.setAccessibleName('Интерактивная стержневая конструкция')
         self.setAccessibleDescription('Выбор стержня также доступен в таблице')
         self.setScene(QGraphicsScene(self))
         self.scene().setSceneRect(0, 0, 900, 310)
@@ -288,7 +288,7 @@ class StructureView(QGraphicsView):
             conditional_scale = conditional_scale or width < 120 or height < 18
             positions.append(positions[-1] + max(120, width))
             heights.append(max(18, height))
-        self.setToolTip('Масштаб схемы условный' if conditional_scale else '')
+        self.setToolTip('Масштаб конструкции условный' if conditional_scale else '')
         return positions, heights
 
     def _support(self, x: float, height: float, closing: bool) -> None:

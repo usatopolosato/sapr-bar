@@ -48,7 +48,7 @@ class ProcessorPage(QWidget):
         self.previousForwardButton.clicked.connect(lambda: self.forwardRowSpin.setValue(self.forwardRowSpin.value() - 1))
         self.nextForwardButton.clicked.connect(lambda: self.forwardRowSpin.setValue(self.forwardRowSpin.value() + 1))
         self.forwardRowSpin.setToolTip('Выберите изменяемую строку. Первая строка служит опорной')
-        self.forwardDetails.setToolTip('Числа взяты из расчёта Decimal. Формат Точно показывает полную рабочую точность')
+        self.forwardDetails.setToolTip('Числа взяты из расчёта Decimal. Точно показывает полную рабочую точность')
         self.forwardControls.hide()
         self.forwardDetails.hide()
         self.sweepBar.hide()
@@ -60,9 +60,7 @@ class ProcessorPage(QWidget):
         self.stepsBar.currentChanged.connect(self._show_step)
         self.stepCombo.currentIndexChanged.connect(self.stepsBar.setCurrentIndex)
         self.numberFormatCombo.currentIndexChanged.connect(self._refresh_numbers)
-        self.numberFormatCombo.setItemText(0, 'Формат Кратко')
-        self.numberFormatCombo.setItemText(1, 'Формат Точно')
-        self.numberFormatCombo.setToolTip('Кратко - округление только для показа\nТочно - полная рабочая точность Decimal')
+        self.numberFormatCombo.setToolTip('Точно - полное значение\nКратко - до 6 знаков после точки в мантиссе, без конечных нулей')
         self.calculateButton.clicked.connect(self.calculateRequested)
         self.preprocessorButton.clicked.connect(self.preprocessorRequested)
         for view in (self.equationsView, self.displacementsView):
@@ -127,7 +125,7 @@ class ProcessorPage(QWidget):
         selected_back_row = max(0, self.backSubstitutionView.currentIndex().row())
         for model in self._node_models:
             model.deleteLater()
-        compact = self.numberFormatCombo.currentIndex() == 0
+        compact = self.numberFormatCombo.currentIndex() == 1
         self._forward_details = ForwardEliminationDetails(self.result, compact)
         equations = NodeTableModel(self.result, True, compact, self)
         displacements = NodeTableModel(self.result, False, compact, self)
@@ -180,7 +178,7 @@ class ProcessorPage(QWidget):
                 self._show_sweep(self.sweepBar.currentIndex())
                 return
             system = (self.result.original, self.result.constrained, self.result.eliminated)[index]
-            self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 0)
+            self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 1)
         else:
             self.stepsStack.setCurrentWidget(self.equationsPage if index == 3 else self.displacementsPage)
 
@@ -194,7 +192,7 @@ class ProcessorPage(QWidget):
         if index == 0:
             self._refresh_forward()
         else:
-            self.system_view.set_system(self.result.eliminated, self.numberFormatCombo.currentIndex() == 0)
+            self.system_view.set_system(self.result.eliminated, self.numberFormatCombo.currentIndex() == 1)
 
     def _refresh_forward(self, index: int = 0) -> None:
         '''Показывает выбранное исключение и матрицу до либо после операции.'''
@@ -203,7 +201,7 @@ class ProcessorPage(QWidget):
         row = self.forwardRowSpin.value() - 1
         completed = row if self.forwardStateCombo.currentIndex() == 1 else row - 1
         system = self._forward_details.trace.system_after(completed)
-        self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 0)
+        self.system_view.set_system(system, self.numberFormatCombo.currentIndex() == 1)
         self.system_view.focus_elimination(row)
         self.forwardDetails.setHtml(self._forward_details.details_html(row))
         self.previousForwardButton.setEnabled(row > 1)
@@ -225,8 +223,8 @@ class ProcessorPage(QWidget):
             formula = (f'-k{row} * Δ{row} + (k{row} + k{row + 1}) * Δ{row + 1}'
                        f' - k{row + 1} * Δ{row + 2} = F{row + 1}'
                        f' + q{row} * L{row} / 2 + q{row + 1} * L{row + 1} / 2')
-        numeric = self._node_models[0].equation(row, self.numberFormatCombo.currentIndex() == 0)
-        value = number_text(self.result.displacements[row], self.numberFormatCombo.currentIndex() == 0)
+        numeric = self._node_models[0].equation(row, self.numberFormatCombo.currentIndex() == 1)
+        value = number_text(self.result.displacements[row], self.numberFormatCombo.currentIndex() == 1)
         if self.result.model.supports[row]:
             text = f'Узел {row + 1} закреплён   Δ{row + 1} = 0 м'
         else:

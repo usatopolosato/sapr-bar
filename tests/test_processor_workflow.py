@@ -120,11 +120,13 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self._assert_module_availability(False, False)
         self.assertTrue(self.window.project_page.processorCard.toolTip())
 
-    def test_save_revokes_results_until_explicit_validation(self) -> None:
-        '''Отзывает расчёт и обработанные файлы при обычном сохранении.'''
+    def test_saving_changed_data_revokes_results_until_explicit_validation(self) -> None:
+        '''Отзывает расчёт и обработанные файлы при сохранении изменений.'''
         self._calculate()
         self._assert_module_availability(True, True)
         self.window.navigate(Page.PREPROCESSOR)
+        self.window.preprocessor_page.lengthInput.setText('7')
+        self.window.preprocessor_page.lengthInput.setModified(True)
         self.window.preprocessor_page.saveProjectButton.click()
         self._assert_module_availability(False, False)
         self.assertIsNone(self.page.result)
@@ -138,6 +140,27 @@ class ProcessorWorkflowTests(unittest.TestCase):
         self._assert_module_availability(True, False)
         self._calculate()
         self._assert_module_availability(True, True)
+
+    def test_unchanged_save_and_check_keep_results_and_files(self) -> None:
+        '''Повторные действия не сбрасывают расчёт, эпюры и даты файлов.'''
+        self._calculate()
+        result = self.page.result
+        postprocessor_result = self.window.postprocessor_page.result
+        fingerprint = self.window._processor_fingerprint
+        signature = self.store.file_signature(self.project.path)
+        revision = self.window._processor_revision
+        self.window.navigate(Page.PREPROCESSOR)
+        for button in (self.window.preprocessor_page.saveProjectButton,
+                       self.window.preprocessor_page.validateButton):
+            with self.subTest(button=button.objectName()):
+                button.click()
+                self._assert_module_availability(True, True)
+                self.assertIs(self.page.result, result)
+                self.assertIs(self.window.postprocessor_page.result, postprocessor_result)
+                self.assertEqual(self.window._processor_fingerprint, fingerprint)
+                self.assertEqual(self.window._processor_revision, revision)
+                self.assertEqual(self.store.file_signature(self.project.path), signature)
+                self.assertTrue(self.window.current_project.validated)
 
     def test_all_steps_use_same_decimal_result(self) -> None:
         '''Показывает обе матрицы, прямой ход, уравнения и вектор delta.'''
@@ -162,7 +185,7 @@ class ProcessorWorkflowTests(unittest.TestCase):
         vector = self.page.displacementsView.model()
         self.assertEqual(vector.rowCount(), 4)
         self.assertEqual(vector.index(3, 0).data(Qt.ItemDataRole.UserRole), result.displacements[3])
-        self.page.numberFormatCombo.setCurrentIndex(1)
+        self.page.numberFormatCombo.setCurrentText('Точно')
         self.assertIs(self.page.result, result)
         self.assertEqual(self.page.displacementsView.model().index(3, 0).data(), str(result.displacements[3]))
         self.assertEqual(self.page.backSubstitutionView.currentIndex().row(), 1)
@@ -184,7 +207,7 @@ class ProcessorWorkflowTests(unittest.TestCase):
         after = self.page.system_view.matrixView.model()
         self.assertEqual(after.index(2, 1).data(Qt.ItemDataRole.UserRole), 0)
         self.assertIn('Обнуление', self.page.forwardDetails.toPlainText())
-        self.page.numberFormatCombo.setCurrentIndex(1)
+        self.page.numberFormatCombo.setCurrentText('Точно')
         self.assertEqual(self.page.forwardRowSpin.value(), 3)
         self.page.sweepBar.setCurrentIndex(1)
         self.assertTrue(self.page.forwardControls.isHidden())

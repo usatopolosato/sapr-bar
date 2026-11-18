@@ -296,7 +296,7 @@ def test_invalid_compact_loading_is_rejected(change):
 def test_duplicate_compact_loading_elements_are_rejected(counts, old_row, new_rows):
     '''Не позволяет дважды задать закрепление, узловую силу или нагрузку стержня.'''
     loading = COMPACT_LD.replace('1     1     1', counts, 1).replace(old_row, new_rows, 1)
-    with pytest.raises(ProjectFormatError, match='повторяющийся'):
+    with pytest.raises(ProjectFormatError, match='повторяющийся|не больше числа'):
         decode_sources(COMPACT_CN, loading)
 
 

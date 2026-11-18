@@ -236,8 +236,8 @@ def test_saving_valid_draft_does_not_prepare_processor_files(tmp_path):
     project = store.save(project, project.model, validate=True)
     assert project.validated
     project = store.save(project, project.model)
-    assert not store.load(project.path).validated
-    assert {item.suffix for item in project.path.iterdir()} == {'.cn', '.ld', '.kpr'}
+    assert store.load(project.path).validated
+    assert {item.suffix for item in project.path.iterdir()} == {'.cn', '.ld', '.kpr', '.cnx', '.ldx'}
 
 
 def test_external_change_invalidates_prepared_data(tmp_path):
@@ -395,10 +395,14 @@ def test_failed_file_replacement_rolls_back_original_project(tmp_path, monkeypat
         return native_replace(source, target)
 
     monkeypatch.setattr(Path, 'replace', failing_replace)
+    changed = replace(project.model, bars=(replace(project.model.bars[0], length_m=Decimal('7')),
+                                          *project.model.bars[1:]), supports=(False, True, False, False))
+    fingerprint = store.read_for_processor(project)[1]
     with pytest.raises(OSError):
-        store.save(project, replace(project.model, supports=(False, True, False, False)))
+        store.save(project, changed)
     assert {item.name: item.read_bytes() for item in project.path.iterdir()} == original
     assert store.load(project.path) == project
+    assert store.read_for_processor(project)[1] == fingerprint
 
 
 @pytest.mark.parametrize('value', [Decimal('NaN'), Decimal('Infinity'), Decimal('0'), Decimal('-1')])

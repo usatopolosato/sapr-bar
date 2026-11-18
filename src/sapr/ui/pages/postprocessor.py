@@ -4,9 +4,10 @@ from decimal import Context, Decimal, InvalidOperation, localcontext
 from html import escape
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QHeaderView, QWidget
+from PyQt6.QtWidgets import QHeaderView, QSizePolicy, QWidget
 
 from ...domain.postprocessor import PostprocessorResult
+from ...formatting import format_quantity, format_result
 from ..feedback import set_input_error, show_feedback
 from ..loader import load_form
 from ..number_input import parse_number
@@ -34,10 +35,23 @@ class PostprocessorPage(QWidget):
         self._table_model = None
         self._selected_x = Decimal(0)
         self._narrow = None
+        self._setup_layout()
+        self._setup_plot_controls()
+        self._setup_table_controls()
+        self._setup_section_controls()
+        self.reportButton.clicked.connect(self.reportRequested)
+        self.processorButton.clicked.connect(self.processorRequested)
+        self.viewsBar.currentChanged.connect(self._show_view)
+        self._show_view(0)
+        self.set_unavailable('Выполните расчёт в процессоре')
+
+    def _setup_layout(self) -> None:
+        '''Размещает графики в форме и задаёт размеры панелей.'''
         self.epures_view = ResponsePlot(self)
         self.graph_view = ResponsePlot(self, local=True)
         self.epuresLayout.addWidget(self.epures_view)
         self.graphLayout.addWidget(self.graph_view)
+        self.hoverValuesLabel.setMinimumHeight(self.hoverValuesLabel.fontMetrics().lineSpacing() * 2 + 4)
         for title in ('Эпюры', 'График', 'Таблица'):
             self.viewsBar.addTab(title)
         self.viewsBar.setExpanding(False)
@@ -49,40 +63,64 @@ class PostprocessorPage(QWidget):
         self.pageLayout.setStretch(2, 1)
         self.resultsLayout.setStretch(1, 1)
         self.plotsCardLayout.setStretch(1, 1)
-        configure_result_table(self.resultsTable)
-        self.resultsTable.verticalHeader().hide()
-        self.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.resultsTable.horizontalHeader().setMinimumSectionSize(75)
-        self.resultsTable.horizontalHeader().setStretchLastSection(True)
+        self.tableLayout.setStretch(1, 1)
+        self.tableToolsLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
         for page in (self.emptyPage, self.resultsPage, self.epuresPage, self.graphPage, self.tablePage):
             page.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.reportButton.clicked.connect(self.reportRequested)
-        self.processorButton.clicked.connect(self.processorRequested)
-        self.viewsBar.currentChanged.connect(self._show_view)
-        self.numberFormatCombo.currentIndexChanged.connect(self._format_changed)
+
+    def _setup_plot_controls(self) -> None:
+        '''Связывает графики с переключателями эпюр и кнопками масштаба.'''
         self.componentCombo.currentIndexChanged.connect(self._component_changed)
-        self.limitsCheck.toggled.connect(self.epures_view.set_limits_visible)
-        self.limitsCheck.toggled.connect(self.graph_view.set_limits_visible)
         self.fitButton.clicked.connect(lambda: self._active_plot().fit_view())
-        self.zoomInButton.clicked.connect(lambda: self._active_plot().zoom_by(Decimal('1.5')))
-        self.zoomOutButton.clicked.connect(lambda: self._active_plot().zoom_by(Decimal('0.6666666666666666666667')))
+        self.zoomInButton.clicked.connect(lambda: self._active_plot().zoom_by(Decimal('1.2')))
+        self.zoomOutButton.clicked.connect(lambda: self._active_plot().zoom_by(Decimal(1) / Decimal('1.2')))
+        self.fitLimitsButton.clicked.connect(self._fit_limits)
+        for view in (self.epures_view, self.graph_view):
+            self.limitsCheck.toggled.connect(view.set_limits_visible)
+            view.set_limits_visible(self.limitsCheck.isChecked())
+            view.viewChanged.connect(self._update_plot_controls)
+            view.sectionHovered.connect(self._show_hover)
+            view.hoverLeft.connect(self._clear_hover)
+            view.sectionSelected.connect(self._select_section)
+        for check in (self.forceCheck, self.stressCheck, self.displacementCheck):
+            check.toggled.connect(self._components_changed)
+
+    def _setup_table_controls(self) -> None:
+        '''Настраивает столбцы, фильтры и сетку сечений.'''
+        configure_result_table(self.resultsTable)
+        self.resultsTable.verticalHeader().hide()
+        header = self.resultsTable.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        header.setMinimumSectionSize(100)
+        header.setStretchLastSection(True)
         self.tableScopeCombo.currentIndexChanged.connect(self._refresh_table)
-        self.tableModeCombo.currentIndexChanged.connect(self._refresh_table)
+        self.tableComponentCombo.addItem('Все величины', None)
+        self.tableComponentCombo.addItem('Продольная сила N', 'N')
+        self.tableComponentCombo.addItem('Напряжение σ', 'sigma')
+        self.tableComponentCombo.addItem('Перемещение u', 'u')
+        self.tableModeCombo.currentIndexChanged.connect(self._table_mode_changed)
+        self.tableComponentCombo.currentIndexChanged.connect(self._refresh_table)
         self.subdivisionsSpin.valueChanged.connect(self._refresh_table)
+        self.samplingCombo.currentIndexChanged.connect(self._sampling_changed)
+        self.stepInput.editingFinished.connect(self._refresh_table)
         self.subdivisionsSpin.setKeyboardTracking(False)
         self.subdivisionsSpin.setToolTip('Характерные точки добавляются независимо от числа разбиений')
-        self.numberFormatCombo.setToolTip('Формат чисел в таблице и формулах\nНа эпюрах подписи краткие, точное значение доступно в сечении')
+
+    def _setup_section_controls(self) -> None:
+        '''Настраивает выбор сечения и формат показанных результатов.'''
+        self.numberFormatCombo.currentIndexChanged.connect(self._format_changed)
+        self.precisionSpin.setKeyboardTracking(True)
+        self.precisionSpin.valueChanged.connect(self._format_changed)
+        self.precisionSpin.setToolTip('Число знаков после точки при округлении.')
+        self.numberFormatCombo.setToolTip('Округлять - по полю Знаков. Точно - все значащие цифры.\nНа эпюрах подписи краткие.')
+        for field in (self.forceValue, self.stressValue, self.displacementValue):
+            field.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.barCombo.currentIndexChanged.connect(self._bar_changed)
         self.sectionButton.clicked.connect(self._apply_position)
         self.positionInput.returnPressed.connect(self._apply_position)
         self.formulasButton.toggled.connect(self.formulasView.setVisible)
-        self.formulasButton.toggled.connect(lambda checked: self.numberFormatCombo.setEnabled(checked or self.viewsBar.currentIndex() != 0))
-        self.epures_view.sectionSelected.connect(self._select_section)
-        self.graph_view.sectionSelected.connect(self._select_section)
         self.formulasView.hide()
         self.sectionErrorLabel.hide()
-        self._show_view(0)
-        self.set_unavailable('Выполните расчёт в процессоре')
 
     def show_status(self, text: str, *, error: bool = False) -> None:
         '''Показывает сообщение операции без изменения расчётных данных.
@@ -101,10 +139,7 @@ class PostprocessorPage(QWidget):
             error: Признак повреждённых данных или ошибки вычисления.
         '''
         self.result = None
-        self.resultsTable.setModel(None)
-        if self._table_model is not None:
-            self._table_model.deleteLater()
-            self._table_model = None
+        self._set_table_model(None)
         self.epures_view.clear()
         self.graph_view.clear()
         self.reportButton.setEnabled(False)
@@ -125,7 +160,10 @@ class PostprocessorPage(QWidget):
         self.reportButton.setEnabled(True)
         self.stateStack.setCurrentWidget(self.resultsPage)
         exceeded = sum(bar.stress_status == 'Превышение' for bar in result.bars)
-        self.show_status(f'Стержней с превышением допуска {exceeded}' if exceeded else 'Расчёт актуален', error=bool(exceeded))
+        if exceeded:
+            self.show_status(f'Прочность не обеспечена. Стержней с превышением {exceeded}', error=True)
+        else:
+            self.show_status('Прочность обеспечена')
         self._select_section(0, Decimal(0))
         self._refresh_table()
         self._update_layout()
@@ -146,9 +184,65 @@ class PostprocessorPage(QWidget):
         '''Переключает представление с сохранением выбранного сечения.'''
         self.viewsStack.setCurrentIndex(index)
         self.plotTools.setVisible(index != 2)
+        self.plotHintLabel.setVisible(index != 2)
+        self.hoverValuesLabel.setVisible(index != 2)
         self.componentCombo.setVisible(index == 1)
+        for check in (self.forceCheck, self.stressCheck, self.displacementCheck):
+            check.setVisible(index == 0)
         self.limitsCheck.setEnabled(index == 0 or self.componentCombo.currentIndex() == 1)
-        self.numberFormatCombo.setEnabled(index != 0 or self.formulasButton.isChecked())
+        self._update_plot_controls()
+        self._clear_hover()
+
+    def _update_plot_controls(self) -> None:
+        '''Согласует доступность приближения допуска с выбранными эпюрами.'''
+        view = self._active_plot()
+        shows_stress = view.component == 'sigma' if view.local else 'sigma' in view.components
+        self.fitLimitsButton.setEnabled(self.result is not None and shows_stress)
+
+    def _fit_limits(self) -> None:
+        '''Показывает область допуска, оставляя видимыми признаки превышения.'''
+        self.limitsCheck.setChecked(True)
+        self._active_plot().fit_limits()
+
+    def _show_hover(self, index: int, x: Decimal) -> None:
+        '''Показывает точное сечение под мышью без изменения закреплённого выбора.'''
+        if self.result is None:
+            return
+        section = self.result.at(index, x)
+        limit = self.result.bars[index].geometry.allowable_stress_pa
+        text = (f'Стержень {index + 1}, x = {number_text(x, True)} м. '
+                f'N = {number_text(section.force_n, True)} Н; σ = {number_text(section.stress_pa, True)} Па; '
+                f'u = {number_text(section.displacement_m, True)} м. Допуск ±{number_text(limit, True)} Па')
+        self.hoverValuesLabel.setText(text)
+        self.hoverValuesLabel.setToolTip(text)
+
+    def _clear_hover(self) -> None:
+        '''Возвращает подсказку, когда временное сечение не выбрано.'''
+        self.hoverValuesLabel.setText('Наведите мышь на график для просмотра значений')
+        self.hoverValuesLabel.setToolTip('')
+
+    def _components_changed(self) -> None:
+        '''Разрешает любой набор эпюр, включая пустой.'''
+        checks = (self.forceCheck, self.stressCheck, self.displacementCheck)
+        self.epures_view.set_components(tuple(key for key, check in zip(('N', 'sigma', 'u'), checks) if check.isChecked()))
+
+    def _sampling_changed(self, index: int) -> None:
+        '''Переключает равномерные разбиения и шаг в метрах.'''
+        self.samplingStack.setCurrentIndex(index)
+        self._refresh_table()
+
+    def _table_mode_changed(self) -> None:
+        '''Открывает экстремумы напряжения, если ранее были выбраны все величины.'''
+        if self.tableModeCombo.currentIndex() and self.tableComponentCombo.currentData() is None:
+            self.tableComponentCombo.setCurrentIndex(2)
+        else:
+            self._refresh_table()
+
+    def sampling_step(self) -> Decimal | None:
+        '''Читает шаг таблицы и отчёта, если выбрана сетка по расстоянию.'''
+        if self.tableModeCombo.currentIndex() or not self.samplingCombo.currentIndex():
+            return None
+        return parse_number(self.stepInput.text(), positive=True)
 
     def _component_changed(self, index: int) -> None:
         '''Выбирает компоненту локального графика.'''
@@ -157,31 +251,58 @@ class PostprocessorPage(QWidget):
 
     def _format_changed(self) -> None:
         '''Переформатирует представление без повторного расчёта модели.'''
+        rounded = self.numberFormatCombo.currentIndex() == 0
+        self.precisionLabel.setVisible(rounded)
+        self.precisionSpin.setVisible(rounded)
         if self.result is None:
             return
         self._refresh_table()
         self._show_section(self.barCombo.currentIndex(), self._selected_x)
 
-    def _refresh_table(self) -> None:
+    def _result_text(self, value: Decimal) -> str:
+        '''Форматирует результат по общему режиму, не меняя расчётное значение.'''
+        if self.numberFormatCombo.currentIndex() == 0:
+            return format_result(value, self.precisionSpin.value())
+        return format_quantity(value)
+
+    def _refresh_table(self) -> bool:
         '''Создаёт ленивую модель для текущей выборки и числа разбиений.'''
         if self.result is None:
-            return
+            return False
+        extrema = bool(self.tableModeCombo.currentIndex())
+        self.samplingCombo.setVisible(not extrema)
+        self.samplingStack.setVisible(not extrema)
         selected = self.barCombo.currentIndex() if self.tableScopeCombo.currentIndex() else None
-        model = ResponseTableModel(self.result, self.subdivisionsSpin.value(),
-                                   bool(self.tableModeCombo.currentIndex()), selected,
-                                   self.numberFormatCombo.currentIndex() == 0, self)
+        try:
+            model = ResponseTableModel(
+                self.result, subdivisions=self.subdivisionsSpin.value(),
+                extrema_only=extrema, selected_bar=selected,
+                compact=self.numberFormatCombo.currentIndex() == 0, places=self.precisionSpin.value(),
+                step=self.sampling_step(), component=self.tableComponentCombo.currentData(), parent=self,
+            )
+        except ValueError as error:
+            self._set_table_model(None)
+            set_input_error(self.stepInput, True)
+            show_feedback(self.tableInfoLabel, str(error), error=True)
+            return False
+        set_input_error(self.stepInput, False)
         model.set_theme(self._colors)
-        previous = self._table_model
-        self._table_model = model
-        self.resultsTable.setModel(model)
+        self._set_table_model(model)
         self.resultsTable.selectionModel().currentRowChanged.connect(self._table_section_selected)
-        for index, width in enumerate((85, 135, 145, 145, 145)):
-            self.resultsTable.setColumnWidth(index, width)
-            self.resultsTable.horizontalHeader().setSectionResizeMode(index, QHeaderView.ResizeMode.Stretch)
-        self.tableInfoLabel.setText(f'Сечений {model.rowCount()}   Концы и экстремумы включены')
-        self.subdivisionsSpin.setEnabled(self.tableModeCombo.currentIndex() == 0)
-        if previous is not None:
-            previous.deleteLater()
+        if extrema:
+            message = ('Минимум и максимум на каждом стержне. x отсчитывается от начала стержня. '
+                       'При совпадении значений показаны обе строки; при нескольких координатах указана одна.')
+        else:
+            message = f'Сечений {model.rowCount()}. x отсчитывается от начала стержня.'
+        show_feedback(self.tableInfoLabel, message)
+        return True
+
+    def _set_table_model(self, model: ResponseTableModel | None) -> None:
+        '''Подключает текущую таблицу и освобождает предыдущую модель Qt.'''
+        self.resultsTable.setModel(model)
+        if self._table_model is not None:
+            self._table_model.deleteLater()
+        self._table_model = model
 
     def _table_section_selected(self, current, previous) -> None:
         '''Передаёт выбранную строку в общую панель сечения.'''
@@ -235,20 +356,31 @@ class PostprocessorPage(QWidget):
         self.lengthLabel.setToolTip(str(bar.geometry.length_m))
         for label, value in ((self.forceValue, section.force_n), (self.stressValue, section.stress_pa),
                              (self.displacementValue, section.displacement_m)):
-            label.setText(number_text(value, True))
+            label.setText(self._result_text(value))
+            label.setCursorPosition(0)
             label.setToolTip(str(value))
         exceeded = bar.stress_status == 'Превышение'
         show_feedback(self.strengthLabel, 'Превышение в стержне' if exceeded else bar.stress_status, error=exceeded)
-        self.strengthDetailsLabel.setText(f'Максимум модуля σ = {number_text(bar.max_abs_stress_pa, True)} Па\n'
-                                          f'Допуск = {number_text(bar.geometry.allowable_stress_pa, True)} Па')
+        peak = bar.max_abs_stress_pa
+        limit = bar.geometry.allowable_stress_pa
+        if self.numberFormatCombo.currentIndex() == 0:
+            peak_text = self._result_text(peak)
+            limit_text = self._result_text(limit)
+        else:
+            peak_text = format_quantity(peak, compact=True)
+            limit_text = format_quantity(limit, compact=True)
+        self.strengthDetailsLabel.setText(f'Максимум модуля σ = {peak_text} Па\nДопуск = {limit_text} Па')
+        self.strengthDetailsLabel.setToolTip(f'Максимум модуля σ = {bar.max_abs_stress_pa} Па\n'
+                                             f'Допуск = {bar.geometry.allowable_stress_pa} Па')
         self.epures_view.set_section(index, x)
         self.graph_view.set_section(index, x)
         self._show_formulas(bar, section)
 
     def _show_formulas(self, bar, section) -> None:
         '''Оформляет формулы и числовую подстановку выбранного сечения.'''
-        compact = self.numberFormatCombo.currentIndex() == 0
-        text = lambda value: escape(number_text(value, compact))
+        def text(value: Decimal) -> str:
+            return escape(self._result_text(value))
+
         with localcontext(Context(prec=bar.precision)):
             stiffness = bar.geometry.modulus_pa * bar.geometry.area_m2 / bar.geometry.length_m
         x, length = text(section.x_m), text(bar.geometry.length_m)
@@ -275,9 +407,16 @@ class PostprocessorPage(QWidget):
         if narrow == self._narrow:
             return
         self._narrow = narrow
-        self.workspaceSplitter.setOrientation(Qt.Orientation.Vertical if narrow else Qt.Orientation.Horizontal)
         self.sectionCard.setMaximumWidth(16777215 if narrow else 320)
+        self.workspaceSplitter.setOrientation(Qt.Orientation.Vertical if narrow else Qt.Orientation.Horizontal)
+        self.workspaceSplitter.refresh()
         self.workspaceSplitter.setSizes([600, 450] if narrow else [900, 280])
+        # QScrollArea иначе сохраняет минимальную ширину горизонтального splitter.
+        for widget in (self.plotsCard, self.sectionCard, self.workspaceSplitter, self.resultsPage, self.stateStack, self):
+            if widget.layout() is not None:
+                widget.layout().invalidate()
+                widget.layout().activate()
+            widget.updateGeometry()
 
     def resizeEvent(self, event) -> None:
         '''Согласует компоновку с фактической шириной страницы.'''

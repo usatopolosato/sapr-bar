@@ -154,6 +154,23 @@ class ProjectWorkflowTests(unittest.TestCase):
         self.assertTrue(self.store.load(project.path).validated)
         self.assertFalse((project.path / 'project.mdx').exists())
 
+    def test_check_saves_pending_input_without_a_separate_save(self) -> None:
+        '''Кнопка Проверить применяет ввод и сохраняет его в исходных файлах.'''
+        from decimal import Decimal
+
+        self.page.lengthInput.setText('4.125')
+        self.page.lengthInput.setModified(True)
+        self.page.validateButton.click()
+        restored = self.store.load(self.project.path)
+        self.assertEqual(restored.model.bars[0].length_m, Decimal('4.125'))
+        self.assertTrue(restored.validated)
+        self.assertEqual(self.store.read_for_processor(restored)[0], self.page.model)
+        self.assertFalse(self.page.has_pending_edits)
+        self.assertFalse(self.window._dirty)
+        signature = self.store.file_signature(self.project.path)
+        self.page.saveProjectButton.click()
+        self.assertEqual(self.store.file_signature(self.project.path), signature)
+
     def test_failed_check_leaves_only_source_files(self) -> None:
         '''Проверяет отсутствие обработанных файлов для пустой модели.'''
         project = self.store.create(self.root, 'Пустая модель')

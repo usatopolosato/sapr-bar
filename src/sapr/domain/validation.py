@@ -69,16 +69,21 @@ def validate_model(model: StructuralModel, *, ready: bool = True) -> tuple[Valid
         ('distributed_loads', model.distributed_loads, count, 'Погонные нагрузки'),
     ):
         if len(values) != expected:
-            issues.append(ValidationIssue(f'{label} - неверное число значений', field))
+            relation = ('Число узлов должно равняться числу стержней + 1. '
+                        if field == 'nodal_forces' and count else '')
+            issues.append(ValidationIssue(
+                f'{label} - получено {len(values)}, требуется {expected}. {relation}'.rstrip(), field))
         for index, value in enumerate(values):
             if not isinstance(value, Decimal) or not value.is_finite():
                 issues.append(ValidationIssue(
                     f'{label} {index + 1} - требуется конечное число', field, index,
                 ))
     if len(model.supports) != node_count:
-        issues.append(ValidationIssue('Опоры - неверное число узлов', 'supports'))
+        issues.append(ValidationIssue(
+            f'Опоры - получено {len(model.supports)} признаков, требуется {node_count}, по одному на каждый узел',
+            'supports'))
     elif any(not isinstance(value, bool) for value in model.supports):
-        issues.append(ValidationIssue('Опоры должны быть заданы для каждого узла', 'supports'))
+        issues.append(ValidationIssue('Признак опоры должен быть логическим значением true или false для каждого узла', 'supports'))
     elif ready and count and not any(model.supports):
         issues.append(ValidationIssue('Задайте хотя бы одну жёсткую опору', 'supports'))
     return tuple(issues)

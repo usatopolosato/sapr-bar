@@ -5,6 +5,7 @@ from decimal import Decimal as D
 import json
 import os
 from pathlib import Path
+import re
 from unittest.mock import patch
 
 import pytest
@@ -70,6 +71,35 @@ def test_import_goes_to_appdata_without_overwriting_project(window, tmp_path):
     assert (second.path / 'project.cnx').exists()
     assert window.project_page.processorButton.isEnabled()
     assert window._settings.value('projects/directory') == str(imported)
+
+
+@pytest.mark.parametrize('damage', ['missing_field', 'wrong_type', 'truncated', 'wrong_node_count'])
+def test_invalid_json_import_keeps_current_project_and_creates_no_folder(window, tmp_path, damage):
+    '''Ошибочный JSON не открывается и не изменяет текущий проект пользователя.'''
+    current = window.current_project
+    original = {path.name: path.read_bytes() for path in current.path.iterdir()}
+    path = tmp_path / 'Повреждённый.json'
+    write_project_json(path, demo_model())
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if damage == 'missing_field':
+        del data['bars'][0]['E']
+    elif damage == 'wrong_type':
+        data['nodes'][0]['fixed'] = 'true'
+    elif damage == 'wrong_node_count':
+        data['nodes'].pop()
+    text = json.dumps(data)
+    path.write_text(text[:len(text) // 2] if damage == 'truncated' else text, encoding='utf-8')
+    imported = tmp_path / 'AppData' / 'projects'
+    with patch.object(QFileDialog, 'getOpenFileName', return_value=(str(path), '')), \
+            patch.object(MainWindow, '_import_directory', return_value=imported), \
+            patch.object(window, '_show_error') as error:
+        window.import_project()
+    error.assert_called_once()
+    assert error.call_args.args[0] == 'Не удалось импортировать проект'
+    assert window.current_project is current
+    assert window.preprocessor_page.model == current.model
+    assert {path.name: path.read_bytes() for path in current.path.iterdir()} == original
+    assert not imported.exists()
 
 
 def test_export_names_copy_and_keeps_working_draft_dirty(window, tmp_path):
@@ -178,11 +208,16 @@ def test_delete_by_number_removes_only_related_data(window):
 
 @pytest.mark.parametrize('length', ['0', '-1'])
 def test_nonincreasing_coordinates_are_rejected(length):
-    '''Отклоняет нулевую длину и возврат узлов назад по оси при открытии CN.'''
+    '''Отклоняет неверную длину при записи и неверные координаты при чтении CN.'''
     model = demo_model()
     model = replace(model, bars=(model.bars[0], replace(model.bars[1], length_m=D(length)), model.bars[2]))
+    with pytest.raises(ValueError, match='Стержень 2 - L должно быть больше нуля'):
+        encode_sources('Ошибка длины', model)
+    construction, loading = encode_sources('Ошибка координат', demo_model())
+    construction, changed = re.subn(r'(?m)^(=03\s+)5$', lambda match: match[1] + str(D(2) + D(length)), construction)
+    assert changed == 1
     with pytest.raises(ValueError, match='строго возрастать'):
-        decode_sources(*encode_sources('Ошибка координат', model))
+        decode_sources(construction, loading)
 
 
 def test_control_problem_from_checked_files(tmp_path):

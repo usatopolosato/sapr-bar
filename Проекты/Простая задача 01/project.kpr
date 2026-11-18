@@ -1,6 +1,6 @@
 {
   "name": "Простая задача 01",
-  "validated": false,
+  "validated": true,
   "sources": {
     "project.cn": "637982cb1e00afe25e29e5bbc5167c1ce9eeea54879faefaa70cb23d164c66aa",
     "project.ld": "667a71d0fc6782b6027a1d6787e7d3d165fb1c157bef4a4e09ce3e2eb71ccce8"

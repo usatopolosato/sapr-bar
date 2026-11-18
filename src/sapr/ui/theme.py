@@ -58,6 +58,7 @@ class ThemeColors:
     distributed: str
     node_fill: str
     node_border: str
+    compression: str
 
 
 LIGHT_COLORS = ThemeColors(
@@ -71,7 +72,7 @@ LIGHT_COLORS = ThemeColors(
     dimension='#8097aa', bar_fill='#e6edf3', bar_selected='#d3eae2',
     bar_border='#8ba0b3', bar_selected_border='#187f69', bar_text='#40596d',
     bar_selected_text='#185a49', force='#a55d19', distributed='#236e88',
-    node_fill='#ffffff', node_border='#a6b7c6',
+    node_fill='#ffffff', node_border='#a6b7c6', compression='#276ab1',
 )
 
 DARK_COLORS = ThemeColors(
@@ -85,7 +86,7 @@ DARK_COLORS = ThemeColors(
     dimension='#637e97', bar_fill='#243447', bar_selected='#2c5148',
     bar_border='#688096', bar_selected_border='#82d6bb', bar_text='#becfdf',
     bar_selected_text='#c5f1e1', force='#e7b37b', distributed='#82cfda',
-    node_fill='#182634', node_border='#526b81',
+    node_fill='#182634', node_border='#526b81', compression='#75b2f0',
 )
 
 

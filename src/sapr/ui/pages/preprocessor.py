@@ -120,7 +120,7 @@ class PreprocessorPage(QWidget):
         self.gridButton.toggled.connect(self.structure_view.set_grid_visible)
         self.loadsVisibleButton.toggled.connect(self.structure_view.set_loads_visible)
         self.numberFormatCombo.currentIndexChanged.connect(self._refresh_numbers)
-        self.numberFormatCombo.setToolTip('6 знаков - округление только для показа\nКратко - до трёх знаков в мантиссе\nТочно - полное значение')
+        self.numberFormatCombo.setToolTip('Точно - полное значение\nКратко - до 6 знаков после точки в мантиссе, без конечных нулей')
         self.barsTable.currentCellChanged.connect(self._table_bar_selected)
         self.barsTable.itemChanged.connect(self._bar_cell_changed)
         self.nodesTable.itemChanged.connect(self._node_cell_changed)
@@ -197,8 +197,7 @@ class PreprocessorPage(QWidget):
         Returns:
             Запись с выбранной точностью отображения.
         '''
-        index = self.numberFormatCombo.currentIndex()
-        return format_quantity(value, index == 1, places=6 if index == 2 else None)
+        return format_quantity(value, self.numberFormatCombo.currentIndex() == 1)
 
     def _configure_table(self, table: QTableWidget) -> None:
         '''Настраивает таблицу и точный редактор чисел.
@@ -243,39 +242,15 @@ class PreprocessorPage(QWidget):
         count = len(self._model.bars)
         self.dataCard.setVisible(bool(count))
         self.canvasCard.setMinimumHeight(180 if self._narrow and not count else 360)
-        self.barsTable.setRowCount(count)
-        for row, bar in enumerate(self._model.bars):
-            self._cell(self.barsTable, row, 0, f'{row + 1:02d}')
-            for col, attr in enumerate(self._bar_attributes, 1):
-                self._cell(self.barsTable, row, col, getattr(bar, attr), True)
-            self._cell(self.barsTable, row, 5, self._model.distributed_loads[row], True)
-        coordinates = self._model.node_positions_m
-        self.nodesTable.setRowCount(len(coordinates))
-        for row, position in enumerate(coordinates):
-            self._cell(self.nodesTable, row, 0, f'{row + 1:02d}')
-            self._cell(self.nodesTable, row, 1, position)
-            self._cell(self.nodesTable, row, 2, '')
-            support = self.nodesTable.item(row, 2)
-            support.setFlags(support.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            support.setCheckState(Qt.CheckState.Checked if self._model.supports[row] else Qt.CheckState.Unchecked)
-            support.setToolTip('Нулевые кинематические граничные условия')
-            self._cell(self.nodesTable, row, 3, self._model.nodal_forces[row], True)
-        self._load_rows = [('F', i, value) for i, value in enumerate(self._model.nodal_forces) if value != ZERO]
-        self._load_rows += [('q', i, value) for i, value in enumerate(self._model.distributed_loads) if value != ZERO]
-        self.loadsTable.setRowCount(len(self._load_rows))
-        for row, (kind, index, value) in enumerate(self._load_rows):
-            for col, text in enumerate((kind, f'{index + 1:02d}', value, 'Н' if kind == 'F' else 'Н/м')):
-                self._cell(self.loadsTable, row, col, text, col == 2)
-        self.dataTabs.setTabText(0, f'Стержни {count}')
-        self.dataTabs.setTabText(1, f'Узлы {len(coordinates)}')
-        self.dataTabs.setTabText(2, f'Нагрузки {len(self._load_rows)}')
+        self._refresh_bars_table()
+        self._refresh_nodes_table()
+        self._refresh_loads_table()
         self._refresh_support_nodes()
         if not self._adding_bar and not any(field.isModified() for field in self._bar_fields):
             self._fill_bar_fields()
         self._update_bar_actions()
         self.structure_view.set_model(self._model)
-        index = self.numberFormatCombo.currentIndex()
-        self.structure_view.set_number_format(index == 1, places=6 if index == 2 else None)
+        self.structure_view.set_number_format(self.numberFormatCombo.currentIndex() == 1)
         if self._selected_bar >= 0:
             self.barsTable.selectRow(self._selected_bar)
             self.structure_view.select_bar(self._selected_bar)
@@ -287,6 +262,43 @@ class PreprocessorPage(QWidget):
                 entry.setData(Qt.ItemDataRole.UserRole, text)
                 entry.setToolTip(error)
         self._updating = False
+
+    def _refresh_bars_table(self) -> None:
+        '''Выводит свойства стержней и погонную нагрузку.'''
+        self.barsTable.setRowCount(len(self._model.bars))
+        for row, bar in enumerate(self._model.bars):
+            self._cell(self.barsTable, row, 0, f'{row + 1:02d}')
+            for col, attr in enumerate(self._bar_attributes, 1):
+                self._cell(self.barsTable, row, col, getattr(bar, attr), True)
+            self._cell(self.barsTable, row, 5, self._model.distributed_loads[row], True)
+        self.dataTabs.setTabText(0, f'Стержни {self.barsTable.rowCount()}')
+
+    def _refresh_nodes_table(self) -> None:
+        '''Выводит координаты, закрепления и силы в узлах.'''
+        coordinates = self._model.node_positions_m
+        self.nodesTable.setRowCount(len(coordinates))
+        for row, position in enumerate(coordinates):
+            self._cell(self.nodesTable, row, 0, f'{row + 1:02d}')
+            self._cell(self.nodesTable, row, 1, position)
+            self._cell(self.nodesTable, row, 2, '')
+            support = self.nodesTable.item(row, 2)
+            support.setFlags(support.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            support.setCheckState(Qt.CheckState.Checked if self._model.supports[row] else Qt.CheckState.Unchecked)
+            support.setToolTip('Нулевые кинематические граничные условия')
+            self._cell(self.nodesTable, row, 3, self._model.nodal_forces[row], True)
+        self.dataTabs.setTabText(1, f'Узлы {len(coordinates)}')
+
+    def _refresh_loads_table(self) -> None:
+        '''Выводит заданные силы и нагрузки вместе с единицами измерения.'''
+        self._load_rows = [('F', i, value) for i, value in enumerate(self._model.nodal_forces) if value != ZERO]
+        self._load_rows += [('q', i, value) for i, value in enumerate(self._model.distributed_loads) if value != ZERO]
+        self.loadsTable.setRowCount(len(self._load_rows))
+        for row, (kind, index, value) in enumerate(self._load_rows):
+            self._cell(self.loadsTable, row, 0, kind)
+            self._cell(self.loadsTable, row, 1, f'{index + 1:02d}')
+            self._cell(self.loadsTable, row, 2, value, editable=True)
+            self._cell(self.loadsTable, row, 3, 'Н' if kind == 'F' else 'Н/м')
+        self.dataTabs.setTabText(2, f'Нагрузки {len(self._load_rows)}')
 
     def _fill_bar_fields(self) -> None:
         '''Показывает исходные значения выбранного стержня без округления.'''

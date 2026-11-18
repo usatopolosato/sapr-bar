@@ -14,6 +14,25 @@ ZERO = Decimal('0')
 TWO = Decimal('2')
 
 
+def _real_roots(a: Decimal, b: Decimal, c: Decimal) -> tuple[Decimal, ...]:
+    '''Находит изолированные вещественные корни a*x² + b*x + c.'''
+    if a == 0:
+        if b == 0:
+            return ()
+        return (-c / b,)
+    discriminant = b * b - Decimal(4) * a * c
+    if discriminant < 0:
+        return ()
+    root = discriminant.sqrt()
+    # Складываем числа одного знака, чтобы сохранить точность малого корня.
+    if b < 0:
+        root = -root
+    numerator = -(b + root) / TWO
+    if numerator == 0:
+        return (-b / (TWO * a),)
+    return numerator / a, c / numerator
+
+
 @dataclass(frozen=True, slots=True)
 class SectionResult:
     '''Хранит компоненты НДС выбранного сечения в единицах СИ.'''
@@ -108,18 +127,8 @@ class BarResponse:
             a = -q / TWO
             b = self.force_origin_n
             c = self.geometry.modulus_pa * self.geometry.area_m2 * self.u_left_m
-            if not a:
-                if b:
-                    candidates.append(-c / b)
-            else:
-                discriminant = b * b - Decimal(4) * a * c
-                if discriminant >= ZERO:
-                    root = discriminant.sqrt()
-                    stable = -(b + (root if b >= ZERO else -root)) / TWO
-                    if stable:
-                        candidates.extend((stable / a, c / stable))
-                    else:
-                        candidates.append(-b / (TWO * a))
+            # Нули перемещения удовлетворяют уравнению EA*u(x) = 0.
+            candidates.extend(_real_roots(a, b, c))
             points.update(value for value in candidates if ZERO < value < length)
             return tuple(sorted(points))
 
@@ -147,10 +156,9 @@ class BarResponse:
     def _extrema(self) -> dict[str, tuple[SectionResult, SectionResult]]:
         '''Сохраняет экстремумы функций без построения сетки отсчётов.'''
         left, right = self.at(ZERO), self.at(self.geometry.length_m)
-        force_extrema = (left, right) if left.force_n <= right.force_n else (right, left)
-        if left.force_n == right.force_n:
-            force_extrema = (left, left)
         points = [left, right]
+        force_extrema = (min(points, key=attrgetter('force_n')),
+                         max(points, key=attrgetter('force_n')))
         if self.q_n_per_m:
             with localcontext(Context(prec=self.precision)):
                 root = self.force_origin_n / self.q_n_per_m

@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
@@ -17,7 +18,7 @@ from PyQt6.QtWidgets import QApplication
 from src.sapr.domain import Bar, StructuralModel, demo_model
 from src.sapr.domain.postprocessor import AxialPostprocessor
 from src.sapr.domain.processor import AxialProcessor
-from src.sapr.formatting import format_quantity
+from src.sapr.formatting import format_result
 from src.sapr.ui.feedback import show_feedback
 from src.sapr.ui.main_window import MainWindow, Page
 from src.sapr.ui.theme import ThemeManager, ThemeMode
@@ -150,8 +151,7 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         self.window.save_project()
         self.window.navigate(Page.POSTPROCESSOR)
         self.assertIsNone(self.page.result)
-        self.assertFalse(self.window.processor_page.calculateButton.isEnabled())
-        self.window.validate_project()
+        self.assertTrue(self.window.processor_page.calculateButton.isEnabled())
         self._calculate()
 
     def test_external_change_invalidates_postprocessor_and_export(self):
@@ -177,11 +177,15 @@ class PostprocessorWorkflowTests(unittest.TestCase):
         '''Сохраняет отчёт текущего расчёта из кнопки интерфейса.'''
         self._calculate()
         self.page.subdivisionsSpin.setValue(3)
-        self.page.reportButton.click()
-        self._wait(lambda: self.window._report_task is None)
+        self.page.reportFormatCombo.setCurrentText('TXT')
+        with patch('src.sapr.ui.main_window.QDesktopServices.openUrl', return_value=True) as open_url:
+            self.page.reportButton.click()
+            self._wait(lambda: self.window._report_task is None)
+            self.assertEqual(open_url.call_count, 1)
+            self.assertEqual(Path(open_url.call_args.args[0].toLocalFile()), self.project.path / 'project.txt')
         text = (self.project.path / 'project.txt').read_text(encoding='utf-8')
         self.assertIn('Разбиений на стержень: 3', text)
-        self.assertIn(format_quantity(self.page.result.processor.displacements[2], compact=True), text)
+        self.assertIn(format_result(self.page.result.processor.displacements[2]), text)
         self.assertIn('Отчёт сохранён - project.txt', self.page.statusLabel.text())
 
     def test_old_result_cannot_enter_another_project(self):
@@ -207,6 +211,8 @@ class PostprocessorWorkflowTests(unittest.TestCase):
                     self.app.processEvents()
                     self.assertFalse(self.page.grab().isNull())
                     self.assertEqual(self.window._page_containers[Page.POSTPROCESSOR].horizontalScrollBar().maximum(), 0)
+                    if width == 800:
+                        self.assertGreaterEqual(self.page.workspaceSplitter.width(), self.page.resultsPage.width() - 2)
                 self.assertEqual(self.page.workspaceSplitter.orientation(),
                                  Qt.Orientation.Vertical if width == 800 else Qt.Orientation.Horizontal)
 

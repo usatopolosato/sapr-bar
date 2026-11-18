@@ -77,15 +77,16 @@ class PostprocessorTask(BackgroundTask):
 class ReportTask(BackgroundTask):
     '''Записывает отчёт с отменой при изменении исходной модели.'''
 
-    def __init__(self, project, result, revision: int, fingerprint: str, subdivisions: int) -> None:
+    def __init__(self, project, result, revision: int, fingerprint: str, subdivisions: int, **options) -> None:
         super().__init__(revision, fingerprint)
         self.project = project
         self.result = result
         self.subdivisions = subdivisions
+        self.options = options
         self.cancelled = Event()
 
     def execute(self) -> tuple[object, str]:
         '''Атомарно записывает актуальный результат в текстовый файл.'''
         path = ResultReport().write(self.project, self.result, self.fingerprint, self.subdivisions,
-                                    cancelled=self.cancelled.is_set)
+                                    cancelled=self.cancelled.is_set, **self.options)
         return path, self.fingerprint

@@ -203,6 +203,13 @@ QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {
     color: ${text};
 }
 QLineEdit:focus, QDoubleSpinBox:focus { border-color: ${accent}; }
+QLineEdit[role="resultValue"] {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-height: 20px;
+}
 QComboBox:hover, QComboBox:focus { border-color: ${accent}; }
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 0; border: none; }
 QScrollBar:vertical { background: transparent; width: 7px; margin: 0; }

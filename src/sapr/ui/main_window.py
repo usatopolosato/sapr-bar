@@ -5,8 +5,8 @@ from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, QStandardPaths, QThreadPool, QTimer, Qt
-from PyQt6.QtGui import QActionGroup, QKeySequence, QPalette, QShortcut
+from PyQt6.QtCore import QSettings, QStandardPaths, QThreadPool, QTimer, Qt, QUrl
+from PyQt6.QtGui import QActionGroup, QDesktopServices, QKeySequence, QPalette, QShortcut
 from PyQt6.QtWidgets import (
     QButtonGroup, QDialog, QFileDialog, QInputDialog, QMainWindow,
     QMenu, QMessageBox, QScrollArea, QToolButton,
@@ -26,6 +26,7 @@ from .pages.welcome import WelcomePage
 from .project_dialog import ProjectDialog
 from .tasks import ProcessorTask, PostprocessorTask, ReportTask
 from .theme import ThemeColors, ThemeManager, ThemeMode
+from .widgets.response_plot import ResponsePlot
 
 
 class Page(Enum):
@@ -377,7 +378,6 @@ class MainWindow(QMainWindow):
             return False
         self._dirty = False
         self._update_title()
-        self._invalidate_processor()
         self._refresh_processor()
         if issues:
             self.preprocessor_page.show_status('\n'.join(issue.message for issue in issues[:4]), error=True)
@@ -450,6 +450,8 @@ class MainWindow(QMainWindow):
         self._processor_fingerprint = fingerprint
         self.processor_page.set_availability(True, 'CNX и LDX проверены', reset=changed)
         if changed:
+            self._processor_revision += 1
+            self._processor_task = None
             self._clear_postprocessor('Файлы изменены. Повторите расчёт')
         if self._processor_task is not None:
             self.processor_page.set_busy()
@@ -541,8 +543,16 @@ class MainWindow(QMainWindow):
         '''Запускает запись отчёта после повторной проверки актуальности файлов.'''
         if self._report_task is not None or not self._refresh_postprocessor():
             return
-        task = ReportTask(self.current_project, self.postprocessor_page.result, self._processor_revision,
-                          self._processor_fingerprint, self.postprocessor_page.subdivisionsSpin.value())
+        page = self.postprocessor_page
+        if not page._refresh_table():
+            page.viewsBar.setCurrentIndex(2)
+            return
+        file_format = page.reportFormatCombo.currentText().lower()
+        diagram = ResponsePlot.report_svg(page.result) if file_format == 'html' else ''
+        task = ReportTask(self.current_project, page.result, self._processor_revision,
+                          self._processor_fingerprint, page.subdivisionsSpin.value(), file_format=file_format,
+                          places=page.precisionSpin.value(), step=page.sampling_step(),
+                          extrema_only=bool(page.tableModeCombo.currentIndex()), diagram=diagram)
         task.signals.finished.connect(self._report_finished)
         self._report_task = task
         self.postprocessor_page.show_status('Сохранение отчёта')
@@ -556,6 +566,8 @@ class MainWindow(QMainWindow):
         if not self._refresh_postprocessor():
             return
         self.postprocessor_page.show_status(error if error else f'Отчёт сохранён - {path.name}', error=bool(error))
+        if not error and not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+            self.postprocessor_page.show_status(f'Отчёт сохранён - {path}. Не удалось открыть автоматически')
 
     def _watch_processor_files(self) -> None:
         '''Скрывает старые результаты после внешнего изменения файлов.'''

@@ -114,7 +114,8 @@ class AxialProcessor:
                 end_loads = tuple(q * bar.length_m / TWO for q, bar in zip(model.distributed_loads, model.bars))
                 original = self._assemble(model, stiffnesses, end_loads)
                 constrained = self._constrain(original, model.supports)
-                eliminated, displacements = self._eliminate(constrained)
+                eliminated = self._forward_elimination(constrained)
+                displacements = self._back_substitution(eliminated)
                 reactions, residual = self._check(model, original, displacements)
                 return ProcessorResult(model, stiffnesses, end_loads, original, constrained,
                                        eliminated, displacements, reactions, residual, precision)
@@ -124,18 +125,19 @@ class AxialProcessor:
     @staticmethod
     def _precision(model: StructuralModel) -> int:
         '''Выбирает точность с запасом для различающихся жёсткостей и нагрузок.'''
-        values = tuple(value for bar in model.bars for value in
-                       (bar.length_m, bar.area_m2, bar.modulus_pa))
-        values += model.nodal_forces + model.distributed_loads
+        values = list(model.nodal_forces) + list(model.distributed_loads)
+        stiffness_orders = []
+        load_orders = [force.adjusted() for force in model.nodal_forces if force]
+        for bar, q in zip(model.bars, model.distributed_loads):
+            values.extend((bar.length_m, bar.area_m2, bar.modulus_pa))
+            # Порядки EA/L и qL позволяют оценить разброс ещё до расчёта.
+            stiffness_orders.append(bar.modulus_pa.adjusted() + bar.area_m2.adjusted() - bar.length_m.adjusted())
+            if q:
+                load_orders.append(q.adjusted() + bar.length_m.adjusted())
         digits = max(len(value.as_tuple().digits) for value in values)
-        orders = [bar.modulus_pa.adjusted() + bar.area_m2.adjusted() - bar.length_m.adjusted()
-                  for bar in model.bars]
-        loads = [value.adjusted() for value in model.nodal_forces if value]
-        loads += [q.adjusted() + bar.length_m.adjusted()
-                  for q, bar in zip(model.distributed_loads, model.bars) if q]
-        spread = max(orders) - min(orders)
-        if loads:
-            spread += max(loads) - min(loads)
+        spread = max(stiffness_orders) - min(stiffness_orders)
+        if load_orders:
+            spread += max(load_orders) - min(load_orders)
         precision = max(60, 3 * digits + spread + 30 + len(str(len(model.bars))))
         if precision > 20000:
             raise CalculationError('Слишком большой разброс величин для надёжного расчёта')
@@ -170,9 +172,10 @@ class AxialProcessor:
         return LinearSystem(tuple(diagonal), adjacent, adjacent, tuple(rhs))
 
     @staticmethod
-    def _eliminate(system: LinearSystem) -> tuple[LinearSystem, tuple[Decimal, ...]]:
-        '''Выполняет прямой и обратный ход прогонки за линейное время.'''
-        diagonal, rhs = list(system.diagonal), list(system.rhs)
+    def _forward_elimination(system: LinearSystem) -> LinearSystem:
+        '''Исключает перемещение предыдущего узла из каждой следующей строки.'''
+        diagonal = list(system.diagonal)
+        rhs = list(system.rhs)
         count = len(diagonal)
         for index in range(1, count):
             if diagonal[index - 1] <= ZERO:
@@ -183,12 +186,18 @@ class AxialProcessor:
                 rhs[index] -= factor * rhs[index - 1]
         if diagonal[-1] <= ZERO:
             raise CalculationError('Система не имеет устойчивого единственного решения')
+        return LinearSystem(tuple(diagonal), (ZERO,) * (count - 1), system.upper, tuple(rhs))
+
+    @staticmethod
+    def _back_substitution(system: LinearSystem) -> tuple[Decimal, ...]:
+        '''Восстанавливает перемещения с последнего узла к первому.'''
+        count = len(system.diagonal)
         displacement = [ZERO] * count
-        displacement[-1] = rhs[-1] / diagonal[-1]
+        displacement[-1] = system.rhs[-1] / system.diagonal[-1]
         for index in range(count - 2, -1, -1):
-            displacement[index] = (rhs[index] - system.upper[index] * displacement[index + 1]) / diagonal[index]
-        eliminated = LinearSystem(tuple(diagonal), (ZERO,) * (count - 1), system.upper, tuple(rhs))
-        return eliminated, tuple(displacement)
+            next_term = system.upper[index] * displacement[index + 1]
+            displacement[index] = (system.rhs[index] - next_term) / system.diagonal[index]
+        return tuple(displacement)
 
     @staticmethod
     def _check(model, system, displacement) -> tuple[tuple[Decimal, ...], Decimal]:

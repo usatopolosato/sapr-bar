@@ -5,11 +5,11 @@
 закреплённых узлов, узловые силы F и погонные нагрузки q.
 '''
 
-from decimal import Decimal, InvalidOperation, localcontext
+from decimal import Decimal, InvalidOperation
 import re
 
 from ..domain import Bar, ModelValidationError, StructuralModel, validate_model
-from .formats import ProjectFormatError, decimal_text
+from .formats import ProjectFormatError, decimal_text, lengths_from_coordinates
 
 
 PROCESSED_FORMAT = 'sapr-bar-numeric-axial-v2'
@@ -183,6 +183,10 @@ def decode_processed(construction: str, loading: str) -> StructuralModel:
     if not 1 <= ns <= 10000 or nr != ns + 1 or not 1 <= nc <= ns:
         raise ProjectFormatError('Неверные размеры массивов CNX')
     positions = [cn.number() for _ in range(nr)]
+    if positions[0] != ZERO:
+        raise ProjectFormatError('CNX: первый узел должен иметь координату 0')
+    if any(right <= left for left, right in zip(positions, positions[1:])):
+        raise ProjectFormatError('CNX: координаты узлов должны строго возрастать, длины должны быть больше нуля')
     groups = []
     for index in range(ns):
         start, end, group = (cn.integer() for _ in range(3))
@@ -191,16 +195,12 @@ def decode_processed(construction: str, loading: str) -> StructuralModel:
         groups.append(group - 1)
     properties = [tuple(cn.number() for _ in range(4)) for _ in range(nc)]
     cn.finish()
-    precision = max(value.adjusted() for value in positions)
-    precision -= min(value.as_tuple().exponent for value in positions)
     bars = []
-    with localcontext() as context:
-        context.prec = max(28, precision + 3)
-        for index, group in enumerate(groups):
-            modulus, area, tension, compression = properties[group]
-            if tension != compression:
-                raise ProjectFormatError('Ожидалось единое допускаемое напряжение')
-            bars.append(Bar(positions[index + 1] - positions[index], area, modulus, tension))
+    for length, group in zip(lengths_from_coordinates(positions), groups):
+        modulus, area, tension, compression = properties[group]
+        if tension != compression:
+            raise ProjectFormatError('Ожидалось единое допускаемое напряжение')
+        bars.append(Bar(length, area, modulus, tension))
     ld = _NumericReader(loading, 'LDX')
     na, nqr, nqs = (ld.integer() for _ in range(3))
     if na > nr or nqr > nr or nqs > ns:

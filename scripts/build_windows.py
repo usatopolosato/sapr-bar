@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from sapr.metadata import AUTHOR, NAME, VERSION
-from sapr.storage import Project, ProjectStore
+from sapr.domain import validate_model
+from sapr.storage import ProjectStore
+from sapr.storage.json_project import write_project_json
 
 
 def prepare_version() -> None:
@@ -45,7 +47,8 @@ def prepare_version() -> None:
 
 
 def prepare_examples() -> None:
-    '''Готовит копии исходных примеров без переноса результатов проверки.'''
+    '''Готовит проекты и JSON учебных задач из одного набора исходных данных.'''
+    sources = ROOT / 'Проекты' / 'Единичные'
     target = ROOT / 'build' / 'examples'
     if target.is_symlink() or target.resolve() != ROOT / 'build' / 'examples':
         raise ValueError('Папка примеров должна находиться внутри каталога сборки')
@@ -53,12 +56,20 @@ def prepare_examples() -> None:
         shutil.rmtree(target)
     target.mkdir()
     store = ProjectStore()
-    for source in sorted((ROOT / 'Проекты').glob('*/project.kpr')):
-        project = store.load(source)
-        folder = target / source.parent.name
-        folder.mkdir()
-        store.save(Project(folder, project.name, project.model), project.model)
-    shutil.copy2(ROOT / 'Проекты' / 'Параметры.txt', target)
+    names = [f'Простая задача {number:02d}' for number in range(1, 6)]
+    names.extend(f'Задача {number:02d}' for number in range(1, 7))
+    names.append('Задача КР')
+    projects = target / 'Единичные'
+    json_folder = target / 'JSON' / 'Единичные'
+    json_folder.mkdir(parents=True)
+    for name in names:
+        project = store.load(sources / name)
+        issues = validate_model(project.model)
+        if issues:
+            raise ValueError(f'{name}: {issues[0].message}')
+        store.create(projects, name, model=project.model)
+        write_project_json(json_folder / f'{name}.json', project.model)
+    shutil.copy2(sources / 'Параметры.txt', projects)
 
 
 def prepare_notices() -> None:

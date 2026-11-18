@@ -7,11 +7,22 @@ CN и LD содержат характеристики осевой модели
 from decimal import Decimal, InvalidOperation, localcontext
 import re
 
-from ..domain import Bar, StructuralModel
+from ..domain import Bar, StructuralModel, validate_model
+
+
+NUMBER_PATTERN = re.compile(r'[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\Z')
+INTEGER_PATTERN = re.compile(r'\+?[0-9]+\Z')
 
 
 class ProjectFormatError(ValueError):
     '''Сообщает о повреждённом или неподдерживаемом файле проекта.'''
+
+
+def validate_source_model(model: StructuralModel) -> None:
+    '''Проверяет физические параметры и размеры массивов, разрешая черновик без опор.'''
+    issues = validate_model(model, ready=False)
+    if issues:
+        raise ProjectFormatError('\n'.join(issue.message for issue in issues))
 
 
 def decimal_text(value: Decimal) -> str:
@@ -33,6 +44,8 @@ def _decimal(token: str) -> Decimal:
     '''Разбирает конечное десятичное число с защитой от чрезмерной записи.'''
     if len(token) > 4096:
         raise ProjectFormatError('Слишком длинная запись числа')
+    if not NUMBER_PATTERN.fullmatch(token):
+        raise ProjectFormatError(f'Некорректное число {token}. Требуется десятичная запись, например 1.25 или 2e11')
     try:
         value = Decimal(token)
     except InvalidOperation as error:
@@ -44,6 +57,8 @@ def _decimal(token: str) -> Decimal:
 
 def _integer(token: str) -> int:
     '''Разбирает целочисленный индекс или размер массива.'''
+    if len(token) > 8 or not INTEGER_PATTERN.fullmatch(token):
+        raise ProjectFormatError(f'Некорректное целое число {token[:32]}')
     try:
         value = int(token)
     except ValueError as error:
@@ -147,8 +162,10 @@ def _marked_rows(lines: list[str], count_fields: int) -> tuple[list[int], list[l
 
 def _section_text(name: str, dimensions: str, columns: tuple[str, ...], rows: list[list[str]]) -> list[str]:
     '''Выравнивает столбцы одного именованного массива.'''
-    widths = [max(len(label), *(len(row[index]) for row in rows))
-              if rows else len(label) for index, label in enumerate(columns)]
+    widths = [len(label) for label in columns]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(value))
     digits = max(2, len(str(len(rows))))
     heading = '* ' + ' ' * (digits + 1) + '  '.join(
         label.rjust(width) for label, width in zip(columns, widths)
@@ -184,16 +201,9 @@ def encode_sources(name: str, model: StructuralModel) -> tuple[str, str]:
     Returns:
         Тексты конструкции и внешних воздействий.
     '''
+    validate_source_model(model)
     count = len(model.bars)
     nodes = count + 1 if count else 0
-    if len(model.nodal_forces) != nodes or len(model.supports) != nodes:
-        raise ProjectFormatError('Число сил и опор должно совпадать с числом узлов')
-    if len(model.distributed_loads) != count:
-        raise ProjectFormatError('Число погонных нагрузок должно совпадать с числом стержней')
-    if count > 10000:
-        raise ProjectFormatError('Допустимо не более 10000 стержней')
-    if any(not isinstance(value, bool) for value in model.supports):
-        raise ProjectFormatError('Признак опоры должен быть логическим значением')
     for value in (*model.nodal_forces, *model.distributed_loads):
         decimal_text(value)
     coordinates = [[decimal_text(position)] for position in model.node_positions_m]
@@ -230,23 +240,54 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
         loading: Текст файла нагрузок.
 
     Returns:
-        Модель, включая ещё не прошедшие диагностику значения.
+        Физически допустимая модель, включая черновик без опор.
 
     Raises:
         ProjectFormatError: Формат повреждён или содержит другую постановку задачи.
     '''
+    bars = _read_construction(construction)
+    node_count = len(bars) + 1 if bars else 0
+    forces, loads, supports = _read_loading(loading, node_count, len(bars))
+    model = StructuralModel(bars, forces, loads, supports)
+    validate_source_model(model)
+    return model
+
+
+def lengths_from_coordinates(coordinates: list[Decimal]) -> list[Decimal]:
+    '''Вычитает координаты соседних узлов с точностью исходных данных.'''
+    if not coordinates:
+        return []
+    highest_digit = max(x.adjusted() for x in coordinates)
+    lowest_digit = min(x.as_tuple().exponent for x in coordinates)
+    with localcontext() as context:
+        context.prec = max(28, highest_digit - lowest_digit + 4)
+        return [right - left for left, right in zip(coordinates, coordinates[1:])]
+
+
+def _read_construction(construction: str) -> tuple[Bar, ...]:
+    '''Читает координаты, связи и характеристики стержней из CN.'''
     counts, rows = _rows(construction, 5)
     compact = len(counts) == 3
     nr, ns, nc = counts[:3]
-    if nr != (ns + 1 if ns else 0) or nc != ns or any(counts[3:]):
+    if ns > 10000:
+        raise ProjectFormatError('CN: допустимо не более 10000 стержней')
+    if nr != (ns + 1 if ns else 0):
+        raise ProjectFormatError(f'CN: число узлов {nr}, стержней {ns}. '
+                                 'Для непустой цепочки число узлов должно равняться числу стержней + 1; '
+                                 'для пустого проекта оба числа должны быть равны 0')
+    if nc != ns:
+        raise ProjectFormatError(f'CN: наборов характеристик {nc}, требуется {ns}, по одному на каждый стержень')
+    if any(counts[3:]):
         raise ProjectFormatError('Поддерживается последовательная осевая цепочка без масс')
     if len(rows) != nr + ns + nc:
         raise ProjectFormatError('Число строк CN не совпадает с размерами массивов')
     coordinates: list[Decimal] = []
     coordinate_width = len(rows[0]) if nr else 1
+    allowed_widths = (1, 2) if compact else (2,)
     for row in rows[:nr]:
-        if (coordinate_width not in ((1, 2) if compact else (2,)) or len(row) != coordinate_width
-                or (coordinate_width == 2 and _decimal(row[1]) != 0)):
+        if len(row) != coordinate_width or coordinate_width not in allowed_widths:
+            raise ProjectFormatError('Узлы должны лежать на общей оси x')
+        if coordinate_width == 2 and _decimal(row[1]) != 0:
             raise ProjectFormatError('Узлы должны лежать на общей оси x')
         coordinates.append(_decimal(row[0]))
     if coordinates and coordinates[0] != 0:
@@ -257,7 +298,8 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
         if len(row) != 3 or [_integer(value) for value in row] != [index + 1, index + 2, index + 1]:
             raise ProjectFormatError('Стержни должны последовательно соединять соседние узлы')
     bars: list[Bar] = []
-    for index, row in enumerate(rows[nr + ns:]):
+    lengths = lengths_from_coordinates(coordinates)
+    for length, row in zip(lengths, rows[nr + ns:]):
         if len(row) != (4 if compact else 10):
             raise ProjectFormatError('Неверное число характеристик стержня')
         values = [_decimal(value) for value in row]
@@ -266,17 +308,22 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
         else:
             if values[0] != 1 or any(values[item] != 0 for item in (2, 3, 5, 6, 7)):
                 raise ProjectFormatError('Поддерживаются только L A E и допускаемое напряжение')
-            modulus, area, tension_stress, compression_stress = (values[item] for item in (1, 4, 8, 9))
+            modulus, area = values[1], values[4]
+            tension_stress, compression_stress = values[8:10]
         if tension_stress != compression_stress:
             raise ProjectFormatError('Допускаемое напряжение должно быть одинаковым при растяжении и сжатии')
-        with localcontext() as context:
-            context.prec = max(28, max(value.adjusted() for value in coordinates)
-                               - min(value.as_tuple().exponent for value in coordinates) + 4)
-            length = coordinates[index + 1] - coordinates[index]
         bars.append(Bar(length, area, modulus, tension_stress))
+    return tuple(bars)
+
+
+def _read_loading(loading: str, nr: int, ns: int) -> tuple[tuple[Decimal, ...], tuple[Decimal, ...], tuple[bool, ...]]:
+    '''Читает закрепления, узловые силы и погонные нагрузки из LD.'''
     counts, rows = _rows(loading, 4)
     compact = len(counts) == 3
     na, nqr, nqs = counts[:3]
+    if na > nr or nqr > nr or nqs > ns:
+        raise ProjectFormatError(f'LD: опор {na} и узловых сил {nqr} должно быть не больше числа узлов {nr}; '
+                                 f'погонных нагрузок {nqs} - не больше числа стержней {ns}')
     if any(counts[3:]) or len(rows) != na + nqr + nqs:
         raise ProjectFormatError('Поддерживаются статические нагрузки с заданными размерами массивов')
     supports = [False] * nr
@@ -289,19 +336,21 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
         if not 0 <= index < nr or supports[index]:
             raise ProjectFormatError('Неверный или повторяющийся узел опоры')
         supports[index] = True
-    forces = [Decimal('0')] * nr
-    loads = [Decimal('0')] * ns
-    for records, values, width, label in (
-        (rows[na:na + nqr], forces, 2 if compact else 4, 'узловой силы'),
-        (rows[na + nqr:], loads, 2 if compact else 5, 'погонной нагрузки'),
-    ):
-        seen: set[int] = set()
-        for row in records:
-            if len(row) != width or any(_decimal(value) != 0 for value in row[2:]):
-                raise ProjectFormatError(f'Неверные компоненты {label}')
-            index = _integer(row[0]) - 1
-            if not 0 <= index < len(values) or index in seen:
-                raise ProjectFormatError(f'Неверный или повторяющийся номер {label}')
-            seen.add(index)
-            values[index] = _decimal(row[1])
-    return StructuralModel(tuple(bars), tuple(forces), tuple(loads), tuple(supports))
+    forces = _read_load_values(rows[na:na + nqr], nr, 2 if compact else 4, 'узловой силы')
+    loads = _read_load_values(rows[na + nqr:], ns, 2 if compact else 5, 'погонной нагрузки')
+    return forces, loads, tuple(supports)
+
+
+def _read_load_values(rows: list[list[str]], count: int, width: int, label: str) -> tuple[Decimal, ...]:
+    '''Расставляет продольные нагрузки по номерам узлов или стержней.'''
+    values = [Decimal('0')] * count
+    seen = set()
+    for row in rows:
+        if len(row) != width or any(_decimal(value) != 0 for value in row[2:]):
+            raise ProjectFormatError(f'Неверные компоненты {label}')
+        index = _integer(row[0]) - 1
+        if not 0 <= index < count or index in seen:
+            raise ProjectFormatError(f'Неверный или повторяющийся номер {label}')
+        seen.add(index)
+        values[index] = _decimal(row[1])
+    return tuple(values)

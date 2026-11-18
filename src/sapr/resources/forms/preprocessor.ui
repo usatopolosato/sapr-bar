@@ -166,7 +166,7 @@
           <item>
            <widget class="QLabel" name="canvasTitleLabel">
             <property name="text">
-             <string>Схема</string>
+             <string>Конструкция</string>
             </property>
             <property name="role" stdset="0">
              <string>cardTitle</string>
@@ -306,7 +306,7 @@
            <item>
             <widget class="QComboBox" name="numberFormatCombo">
              <property name="currentIndex">
-              <number>2</number>
+              <number>1</number>
              </property>
              <item>
               <property name="text">
@@ -318,7 +318,6 @@
                <string>Кратко</string>
               </property>
              </item>
-             <item><property name="text"><string>6 знаков</string></property></item>
             </widget>
            </item>
            <item>

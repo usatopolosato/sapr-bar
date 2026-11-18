@@ -8,6 +8,7 @@
    <item><layout class="QHBoxLayout" name="headerLayout">
     <item><widget class="QLabel" name="titleLabel"><property name="text"><string>Постпроцессор</string></property><property name="role" stdset="0"><string>pageTitle</string></property></widget></item>
     <item><spacer name="headerSpace"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>0</height></size></property></spacer></item>
+    <item><widget class="QComboBox" name="reportFormatCombo"><item><property name="text"><string>HTML</string></property></item><item><property name="text"><string>TXT</string></property></item></widget></item>
     <item><widget class="QPushButton" name="reportButton"><property name="text"><string>Отчёт</string></property><property name="role" stdset="0"><string>primary</string></property></widget></item>
    </layout></item>
    <item><widget class="QLabel" name="statusLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
@@ -23,19 +24,27 @@
      <item><layout class="QHBoxLayout" name="modeLayout">
       <item><widget class="QTabBar" name="viewsBar"/></item>
       <item><spacer name="modeSpace"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>10</width><height>0</height></size></property></spacer></item>
-      <item><widget class="QComboBox" name="numberFormatCombo"><item><property name="text"><string>Кратко</string></property></item><item><property name="text"><string>Точно</string></property></item></widget></item>
+      <item><widget class="QLabel" name="precisionLabel"><property name="text"><string>Знаков</string></property><property name="buddy"><cstring>precisionSpin</cstring></property></widget></item>
+      <item><widget class="QSpinBox" name="precisionSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>12</number></property><property name="value"><number>6</number></property></widget></item>
+      <item><widget class="QComboBox" name="numberFormatCombo"><item><property name="text"><string>Округлять</string></property></item><item><property name="text"><string>Точно</string></property></item></widget></item>
      </layout></item>
      <item><widget class="QSplitter" name="workspaceSplitter"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="handleWidth"><number>12</number></property>
       <widget class="QFrame" name="plotsCard"><property name="role" stdset="0"><string>card</string></property><layout class="QVBoxLayout" name="plotsCardLayout">
        <property name="spacing"><number>8</number></property><property name="leftMargin"><number>14</number></property><property name="topMargin"><number>14</number></property><property name="rightMargin"><number>14</number></property><property name="bottomMargin"><number>14</number></property>
-       <item><widget class="QWidget" name="plotTools"><layout class="QHBoxLayout" name="plotToolsLayout">
+       <item><widget class="QWidget" name="plotTools"><layout class="QVBoxLayout" name="plotToolsLayout">
         <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+        <item><layout class="QHBoxLayout" name="plotSelectionLayout">
         <item><widget class="QComboBox" name="componentCombo"><item><property name="text"><string>N, Н</string></property></item><item><property name="text"><string>σ, Па</string></property></item><item><property name="text"><string>u, м</string></property></item></widget></item>
-        <item><widget class="QCheckBox" name="limitsCheck"><property name="text"><string>Допуск</string></property></widget></item>
+        <item><widget class="QCheckBox" name="forceCheck"><property name="text"><string>N</string></property><property name="checked"><bool>true</bool></property></widget></item>
+        <item><widget class="QCheckBox" name="stressCheck"><property name="text"><string>σ</string></property><property name="checked"><bool>true</bool></property></widget></item>
+        <item><widget class="QCheckBox" name="displacementCheck"><property name="text"><string>u</string></property><property name="checked"><bool>true</bool></property></widget></item>
+        <item><widget class="QCheckBox" name="limitsCheck"><property name="text"><string>Допуск</string></property><property name="checked"><bool>true</bool></property></widget></item>
+        <item><widget class="QPushButton" name="fitLimitsButton"><property name="text"><string>К допуску</string></property><property name="toolTip"><string>Приблизить допустимые напряжения выбранного стержня. Значения за краем графика отмечены стрелками.</string></property><property name="role" stdset="0"><string>tool</string></property></widget></item>
         <item><spacer name="toolsSpace"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>10</width><height>0</height></size></property></spacer></item>
         <item><widget class="QPushButton" name="fitButton"><property name="text"><string>Вписать</string></property><property name="role" stdset="0"><string>tool</string></property></widget></item>
         <item><widget class="QPushButton" name="zoomOutButton"><property name="text"><string>Меньше</string></property><property name="role" stdset="0"><string>tool</string></property></widget></item>
         <item><widget class="QPushButton" name="zoomInButton"><property name="text"><string>Больше</string></property><property name="role" stdset="0"><string>tool</string></property></widget></item>
+        </layout></item>
        </layout></widget></item>
        <item><widget class="QStackedWidget" name="viewsStack">
         <widget class="QWidget" name="epuresPage"><layout class="QVBoxLayout" name="epuresLayout"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout></widget>
@@ -45,13 +54,21 @@
          <item><layout class="QGridLayout" name="tableToolsLayout">
           <item row="0" column="0"><widget class="QComboBox" name="tableScopeCombo"><item><property name="text"><string>Все стержни</string></property></item><item><property name="text"><string>Выбранный стержень</string></property></item></widget></item>
           <item row="0" column="1"><widget class="QComboBox" name="tableModeCombo"><item><property name="text"><string>Сечения</string></property></item><item><property name="text"><string>Экстремумы</string></property></item></widget></item>
-          <item row="1" column="0"><widget class="QLabel" name="subdivisionsLabel"><property name="text"><string>Разбиений на стержень</string></property><property name="role" stdset="0"><string>muted</string></property><property name="buddy"><cstring>subdivisionsSpin</cstring></property></widget></item>
-          <item row="1" column="1"><widget class="QSpinBox" name="subdivisionsSpin"><property name="buttonSymbols"><enum>QAbstractSpinBox::NoButtons</enum></property><property name="minimum"><number>1</number></property><property name="maximum"><number>1000</number></property><property name="value"><number>10</number></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="tableComponentLabel"><property name="text"><string>Величина</string></property><property name="buddy"><cstring>tableComponentCombo</cstring></property></widget></item>
+          <item row="1" column="1"><widget class="QComboBox" name="tableComponentCombo"/></item>
+          <item row="2" column="0"><widget class="QComboBox" name="samplingCombo"><item><property name="text"><string>Разбиений на стержень</string></property></item><item><property name="text"><string>Шаг, м</string></property></item></widget></item>
+          <item row="2" column="1"><widget class="QStackedWidget" name="samplingStack">
+           <widget class="QWidget" name="intervalsPage"><layout class="QHBoxLayout" name="intervalsLayout"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><item><widget class="QSpinBox" name="subdivisionsSpin"><property name="buttonSymbols"><enum>QAbstractSpinBox::NoButtons</enum></property><property name="minimum"><number>1</number></property><property name="maximum"><number>1000</number></property><property name="value"><number>10</number></property></widget></item></layout></widget>
+           <widget class="QWidget" name="stepPage"><layout class="QHBoxLayout" name="stepLayout"><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><item><widget class="QLineEdit" name="stepInput"><property name="text"><string>0.1</string></property><property name="maxLength"><number>4096</number></property></widget></item></layout></widget>
+          </widget></item>
          </layout></item>
          <item><widget class="QTableView" name="resultsTable"><property name="minimumSize"><size><width>0</width><height>320</height></size></property></widget></item>
          <item><widget class="QLabel" name="tableInfoLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
         </layout></widget>
        </widget></item>
+       <item><widget class="QLabel" name="plotHintLabel"><property name="text"><string>Колесо - масштаб. Перетаскивание - перемещение. Двойной щелчок - вписать.
+Ctrl + колесо - длина. Shift + колесо - высота эпюры. Щелчок - сечение.</string></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
+       <item><widget class="QLabel" name="hoverValuesLabel"><property name="text"><string>Наведите мышь на график для просмотра значений</string></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
       </layout></widget>
       <widget class="QFrame" name="sectionCard"><property name="role" stdset="0"><string>inspector</string></property><property name="minimumSize"><size><width>260</width><height>0</height></size></property><property name="maximumSize"><size><width>320</width><height>16777215</height></size></property><layout class="QVBoxLayout" name="sectionLayout">
        <property name="spacing"><number>10</number></property><property name="leftMargin"><number>16</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>16</number></property><property name="bottomMargin"><number>16</number></property>
@@ -65,11 +82,11 @@
        <item><layout class="QGridLayout" name="valuesLayout">
         <property name="verticalSpacing"><number>12</number></property>
         <item row="0" column="0"><widget class="QLabel" name="forceLabel"><property name="text"><string>N, Н</string></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
-        <item row="0" column="1"><widget class="QLabel" name="forceValue"><property name="text"><string>0</string></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+        <item row="0" column="1"><widget class="QLineEdit" name="forceValue"><property name="text"><string>0</string></property><property name="readOnly"><bool>true</bool></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="role" stdset="0"><string>resultValue</string></property></widget></item>
         <item row="1" column="0"><widget class="QLabel" name="stressLabel"><property name="text"><string>σ, Па</string></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
-        <item row="1" column="1"><widget class="QLabel" name="stressValue"><property name="text"><string>0</string></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+        <item row="1" column="1"><widget class="QLineEdit" name="stressValue"><property name="text"><string>0</string></property><property name="readOnly"><bool>true</bool></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="role" stdset="0"><string>resultValue</string></property></widget></item>
         <item row="2" column="0"><widget class="QLabel" name="displacementLabel"><property name="text"><string>u, м</string></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
-        <item row="2" column="1"><widget class="QLabel" name="displacementValue"><property name="text"><string>0</string></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="textInteractionFlags"><set>Qt::TextSelectableByMouse</set></property></widget></item>
+        <item row="2" column="1"><widget class="QLineEdit" name="displacementValue"><property name="text"><string>0</string></property><property name="readOnly"><bool>true</bool></property><property name="alignment"><set>Qt::AlignRight|Qt::AlignVCenter</set></property><property name="role" stdset="0"><string>resultValue</string></property></widget></item>
        </layout></item>
        <item><widget class="QLabel" name="strengthLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property></widget></item>
        <item><widget class="QLabel" name="strengthDetailsLabel"><property name="text"><string/></property><property name="wordWrap"><bool>true</bool></property><property name="role" stdset="0"><string>muted</string></property></widget></item>
@@ -82,7 +99,7 @@
    </widget></item>
   </layout>
  </widget>
- <tabstops><tabstop>reportButton</tabstop><tabstop>processorButton</tabstop><tabstop>numberFormatCombo</tabstop><tabstop>componentCombo</tabstop><tabstop>limitsCheck</tabstop><tabstop>fitButton</tabstop><tabstop>zoomOutButton</tabstop><tabstop>zoomInButton</tabstop><tabstop>tableScopeCombo</tabstop><tabstop>tableModeCombo</tabstop><tabstop>subdivisionsSpin</tabstop><tabstop>resultsTable</tabstop><tabstop>barCombo</tabstop><tabstop>positionInput</tabstop><tabstop>sectionButton</tabstop><tabstop>formulasButton</tabstop><tabstop>formulasView</tabstop></tabstops>
+ <tabstops><tabstop>reportButton</tabstop><tabstop>processorButton</tabstop><tabstop>numberFormatCombo</tabstop><tabstop>componentCombo</tabstop><tabstop>limitsCheck</tabstop><tabstop>fitButton</tabstop><tabstop>zoomOutButton</tabstop><tabstop>zoomInButton</tabstop><tabstop>tableScopeCombo</tabstop><tabstop>tableModeCombo</tabstop><tabstop>tableComponentCombo</tabstop><tabstop>samplingCombo</tabstop><tabstop>subdivisionsSpin</tabstop><tabstop>stepInput</tabstop><tabstop>resultsTable</tabstop><tabstop>barCombo</tabstop><tabstop>positionInput</tabstop><tabstop>sectionButton</tabstop><tabstop>formulasButton</tabstop><tabstop>formulasView</tabstop></tabstops>
  <resources/>
  <connections/>
 </ui>

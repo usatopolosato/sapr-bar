@@ -40,7 +40,7 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.page.lengthInput.setModified(True)
         self.assertTrue(self.page.commit_pending_edits())
         self.page.numberFormatCombo.setCurrentIndex(1)
-        self.assertEqual(self.page.barsTable.item(0, 1).text(), '1.235')
+        self.assertEqual(self.page.barsTable.item(0, 1).text(), '1.234568')
         self.assertEqual(self.page.lengthInput.text(), value)
         self.assertEqual(self.page.model.bars[0].length_m, Decimal(value))
         self.page.barsTable.item(0, 1).setText('2.9876543210987654321098765432')
