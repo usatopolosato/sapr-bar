@@ -251,6 +251,8 @@ def decode_sources(construction: str, loading: str) -> StructuralModel:
         coordinates.append(_decimal(row[0]))
     if coordinates and coordinates[0] != 0:
         raise ProjectFormatError('Первый узел должен иметь координату 0')
+    if any(right <= left for left, right in zip(coordinates, coordinates[1:])):
+        raise ProjectFormatError('Координаты узлов должны строго возрастать. Длина стержня должна быть больше нуля')
     for index, row in enumerate(rows[nr:nr + ns]):
         if len(row) != 3 or [_integer(value) for value in row] != [index + 1, index + 2, index + 1]:
             raise ProjectFormatError('Стержни должны последовательно соединять соседние узлы')

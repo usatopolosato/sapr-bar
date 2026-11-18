@@ -1,18 +1,20 @@
 '''Организует навигацию между независимыми страницами приложения.'''
 
 from enum import Enum
+from dataclasses import replace
 from functools import partial
 from pathlib import Path
 
-from PyQt6.QtCore import QSettings, QThreadPool, QTimer, Qt
+from PyQt6.QtCore import QSettings, QStandardPaths, QThreadPool, QTimer, Qt
 from PyQt6.QtGui import QActionGroup, QKeySequence, QPalette, QShortcut
 from PyQt6.QtWidgets import (
-    QButtonGroup, QDialog, QFileDialog, QMainWindow,
+    QButtonGroup, QDialog, QFileDialog, QInputDialog, QMainWindow,
     QMenu, QMessageBox, QScrollArea, QToolButton,
 )
 
 from ..domain import StructuralModel, validate_model
 from ..storage import Project, ProjectStore
+from ..storage.json_project import read_project_json, write_project_json
 from ..metadata import AUTHOR, NAME
 
 from .loader import load_form
@@ -104,6 +106,8 @@ class MainWindow(QMainWindow):
         self.sectionButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.welcome_page.createRequested.connect(self.create_project)
         self.welcome_page.openRequested.connect(self.open_project)
+        self.welcome_page.importRequested.connect(self.import_project)
+        self._setup_project_menu()
         self.project_page.preprocessorRequested.connect(partial(self.navigate, Page.PREPROCESSOR))
         self.project_page.processorRequested.connect(partial(self.navigate, Page.PROCESSOR))
         self.project_page.postprocessorRequested.connect(partial(self.navigate, Page.POSTPROCESSOR))
@@ -125,12 +129,37 @@ class MainWindow(QMainWindow):
             ('Ctrl+N', self.create_project),
             ('Ctrl+O', self.open_project),
             ('Ctrl+S', self.save_project),
+            ('Ctrl+Shift+S', self.save_project_as),
             ('Escape', self._go_back),
         ):
             shortcut = QShortcut(QKeySequence(sequence), self)
             shortcut.activated.connect(action)
             self._shortcuts.append(shortcut)
         self.navigate(Page.WELCOME)
+
+    def _setup_project_menu(self) -> None:
+        '''Объединяет файловые операции в доступное на всех страницах меню.'''
+        menu = QMenu(self.projectButton)
+        menu.addAction('Создать проект').triggered.connect(self.create_project)
+        menu.addAction('Открыть проект').triggered.connect(self.open_project)
+        menu.addAction('Импорт JSON').triggered.connect(self.import_project)
+        menu.addSeparator()
+        self._project_actions = []
+        for title, callback in (
+            ('Сохранить', self.save_project), ('Сохранить как JSON', self.save_project_as),
+            ('Переименовать', self.rename_project),
+        ):
+            action = menu.addAction(title)
+            action.triggered.connect(callback)
+            self._project_actions.append(action)
+        menu.aboutToShow.connect(self._sync_project_actions)
+        self.projectButton.setMenu(menu)
+        self.projectButton.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+    def _sync_project_actions(self) -> None:
+        '''Разрешает операции сохранения и переименования для открытого проекта.'''
+        for action in self._project_actions:
+            action.setEnabled(self.current_project is not None)
 
     def _setup_theme_menu(self) -> None:
         '''Создаёт меню выбора системной светлой или тёмной темы.'''
@@ -215,7 +244,7 @@ class MainWindow(QMainWindow):
         self.sidebarProjectLabel.setToolTip(str(project.path))
         self._settings.setValue('projects/directory', str(project.path.parent))
         self._update_title()
-        self.navigate(Page.PROJECT)
+        self.navigate(Page.PREPROCESSOR)
 
     def create_project(self) -> None:
         '''Создаёт папку проекта и начальные файлы исходных данных.'''
@@ -248,6 +277,77 @@ class MainWindow(QMainWindow):
             Признак успешной записи текущей модели.
         '''
         return self._write_project(validate=False)
+
+    def import_project(self) -> None:
+        '''Открывает JSON и создаёт отдельную папку непроверенного проекта.'''
+        if not self._confirm_project_change():
+            return
+        filename, _ = QFileDialog.getOpenFileName(
+            self, 'Импорт проекта', self._settings.value('projects/directory', '', type=str),
+            'Проекты JSON (*.json)',
+        )
+        if not filename:
+            return
+        path = Path(filename)
+        try:
+            model = read_project_json(path)
+        except (OSError, ValueError) as error:
+            self._show_error('Не удалось импортировать проект', error)
+            return
+        root = self._import_directory()
+        folder = path.stem
+        suffix = 2
+        while (root / folder).exists():
+            folder = f'{path.stem[:68]} {suffix}'
+            suffix += 1
+        try:
+            project = self._store.create(root, path.stem, model=model, folder_name=folder)
+        except (OSError, ValueError) as error:
+            self._show_error('Не удалось создать импортированный проект', error)
+            return
+        self._activate_project(project)
+
+    @staticmethod
+    def _import_directory() -> Path:
+        '''Возвращает постоянную папку импортированных проектов в AppData.'''
+        return Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.GenericDataLocation)) / AUTHOR / NAME / 'projects'
+
+    def save_project_as(self) -> bool:
+        '''Сохраняет отдельную копию исходных данных в выбранный JSON.'''
+        if self.current_project is None or not self.preprocessor_page.commit_pending_edits():
+            return False
+        directory = Path(self._settings.value('projects/directory', str(self.current_project.path.parent), type=str))
+        filename, _ = QFileDialog.getSaveFileName(
+            self, 'Сохранить как', str(directory / f'{self.current_project.name}.json'),
+            'Проекты JSON (*.json)',
+        )
+        if not filename:
+            return False
+        path = Path(filename)
+        if path.suffix.lower() != '.json':
+            path = path.with_suffix('.json')
+        try:
+            write_project_json(path, self.preprocessor_page.model)
+        except (OSError, ValueError) as error:
+            self._show_error('Не удалось сохранить JSON', error)
+            return False
+        self._settings.setValue('projects/directory', str(path.parent))
+        self.preprocessor_page.show_status(f'Копия сохранена - {path.name}')
+        return True
+
+    def rename_project(self) -> None:
+        '''Меняет название проекта и сохраняет текущие исходные данные.'''
+        if self.current_project is None or not self.preprocessor_page.commit_pending_edits():
+            return
+        name, accepted = QInputDialog.getText(self, 'Переименовать проект', 'Название', text=self.current_project.name)
+        if not accepted or name.strip() == self.current_project.name:
+            return
+        try:
+            project = self._store.save(replace(self.current_project, name=name.strip()), self.preprocessor_page.model)
+        except (OSError, ValueError) as error:
+            self._show_error('Не удалось переименовать проект', error)
+            return
+        self._activate_project(project)
 
     def validate_project(self) -> bool:
         '''Сохраняет модель и формирует CNX и LDX после успешной проверки.

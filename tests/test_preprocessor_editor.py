@@ -59,22 +59,29 @@ class PreprocessorEditorTests(unittest.TestCase):
         self.assertEqual(self.page.model.nodal_forces, (Decimal('0'), Decimal('0')))
         self.assertEqual(self.page.model.supports, (False, False))
 
-    def test_empty_first_bar_form_saves_draft_and_partial_form_requires_completion(self) -> None:
-        '''Отличает пустую начальную форму от незавершённого ввода стержня.'''
+    def test_unit_defaults_keep_empty_project_until_edit_or_add(self) -> None:
+        '''Сохраняет пустой проект, пока единичные поля не изменены.'''
         self.page.set_model(StructuralModel())
         saved = []
         self.page.saveRequested.connect(lambda: saved.append(True))
         self.assertTrue(self.page.commit_pending_edits())
         self.page.saveProjectButton.click()
         self.assertEqual(saved, [True])
+        self.assertEqual(self.page.model, StructuralModel())
+        self.assertEqual([field.text() for field in self.page._bar_fields], ['1'] * 4)
         self.page.lengthInput.setText('2')
         self.page.lengthInput.setModified(True)
         self.page.saveProjectButton.click()
-        self.assertEqual(saved, [True])
-        self.assertEqual(self.page.lengthInput.text(), '2')
+        self.assertEqual(saved, [True, True])
+        self.assertEqual(self.page.model.bars[0].length_m, Decimal('2'))
+        self.assertEqual(self.page.model.bars[0].allowable_stress_pa, Decimal('1'))
+        self.page.set_model(StructuralModel())
+        self.page.lengthInput.clear()
+        self.page.lengthInput.setModified(True)
+        self.assertFalse(self.page.commit_pending_edits())
         self.page.cancelBarButton.click()
         self.assertTrue(self.page.commit_pending_edits())
-        self.assertEqual(self.page.lengthInput.text(), '')
+        self.assertEqual(self.page.lengthInput.text(), '1')
         self.assertEqual(self.page.model, StructuralModel())
 
     def test_new_bar_action_keeps_creation_and_editing_in_one_editor(self) -> None:

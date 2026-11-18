@@ -247,6 +247,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="importProjectButton">
+        <property name="text"><string>Импорт JSON</string></property>
+        <property name="role" stdset="0"><string>secondary</string></property>
+        <property name="minimumSize"><size><width>0</width><height>44</height></size></property>
+       </widget>
+      </item>
+      <item>
        <spacer name="startFooterSpace">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -280,6 +287,7 @@
  <tabstops>
   <tabstop>createProjectButton</tabstop>
   <tabstop>openProjectButton</tabstop>
+  <tabstop>importProjectButton</tabstop>
  </tabstops>
  <resources />
  <connections />

@@ -229,19 +229,21 @@ QComboBox { padding: 5px 10px; min-height: 18px; }
 QComboBox::drop-down { border: none; width: 18px; }
 QComboBox QAbstractItemView { background: ${surface}; selection-background-color: ${selection}; border: 1px solid ${border}; }
 
-QToolButton#themeButton, QToolButton#sectionButton {
+QToolButton {
     background: transparent;
     border: 1px solid ${border};
     border-radius: 5px;
     color: ${muted};
     padding: 7px 13px;
 }
-QToolButton#themeButton:hover, QToolButton#themeButton:pressed, QToolButton#sectionButton:hover, QToolButton#sectionButton:pressed {
+QToolButton:hover, QToolButton:pressed {
     background: ${hover};
     color: ${text};
 }
-QToolButton#themeButton:focus, QToolButton#sectionButton:focus { border-color: ${accent}; }
-QToolButton#themeButton::menu-indicator, QToolButton#sectionButton::menu-indicator { image: none; width: 0; }
+QToolButton:focus { border-color: ${accent}; }
+QToolButton#themeButton::menu-indicator, QToolButton#sectionButton::menu-indicator, QToolButton#projectButton::menu-indicator { image: none; width: 0; }
+QToolButton#removeBarButton { padding-right: 28px; min-height: 18px; font-size: 12px; }
+QToolButton#removeBarButton::menu-button { width: 20px; border-left: 1px solid ${border}; }
 QScrollArea { border: none; background: ${window}; }
 QMenu {
     background: ${panel};

@@ -5,8 +5,8 @@ from decimal import Decimal
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QApplication, QButtonGroup, QHeaderView, QLineEdit, QMessageBox,
-    QScrollArea, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QWidget,
+    QAbstractItemView, QApplication, QButtonGroup, QHeaderView, QInputDialog, QLineEdit, QMenu, QMessageBox,
+    QScrollArea, QStyledItemDelegate, QTableWidget, QTableWidgetItem, QToolButton, QWidget,
 )
 
 from ...domain import Bar, StructuralModel
@@ -80,7 +80,7 @@ class PreprocessorPage(QWidget):
         self.pageLayout.setStretch(0, 0)
         self.pageLayout.setStretch(1, 0)
         self.pageLayout.setStretch(2, 1)
-        self.canvasCard.setMinimumHeight(275)
+        self.canvasCard.setMinimumHeight(360)
         self._bar_fields = (self.lengthInput, self.areaInput, self.modulusInput, self.stressInput)
         self._bar_attributes = ('length_m', 'area_m2', 'modulus_pa', 'allowable_stress_pa')
         for splitter in (self.workspaceSplitter, self.modelSplitter):
@@ -96,6 +96,11 @@ class PreprocessorPage(QWidget):
             self._configure_table(table)
         self.addBarButton.clicked.connect(self._start_bar)
         self.removeBarButton.clicked.connect(self._remove_bar)
+        menu = QMenu(self.removeBarButton)
+        menu.addAction('Выбранный стержень').triggered.connect(self._remove_bar)
+        menu.addAction('По номеру').triggered.connect(self._remove_bar_by_number)
+        self.removeBarButton.setMenu(menu)
+        self.removeBarButton.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         self.applyBarButton.clicked.connect(self._apply_bar)
         self.cancelBarButton.clicked.connect(self._cancel_bar)
         self.applyLoadButton.clicked.connect(self._apply_load)
@@ -115,7 +120,7 @@ class PreprocessorPage(QWidget):
         self.gridButton.toggled.connect(self.structure_view.set_grid_visible)
         self.loadsVisibleButton.toggled.connect(self.structure_view.set_loads_visible)
         self.numberFormatCombo.currentIndexChanged.connect(self._refresh_numbers)
-        self.numberFormatCombo.setToolTip('Кратко - до трёх знаков после точки в мантиссе\nТочно - полное значение')
+        self.numberFormatCombo.setToolTip('6 знаков - округление только для показа\nКратко - до трёх знаков в мантиссе\nТочно - полное значение')
         self.barsTable.currentCellChanged.connect(self._table_bar_selected)
         self.barsTable.itemChanged.connect(self._bar_cell_changed)
         self.nodesTable.itemChanged.connect(self._node_cell_changed)
@@ -135,8 +140,6 @@ class PreprocessorPage(QWidget):
     def has_pending_edits(self) -> bool:
         '''Возвращает наличие неприменённого или некорректного ввода.'''
         pending = any(field.isModified() for field in self._bar_fields)
-        if self._adding_bar:
-            pending = any(field.text().strip() for field in self._bar_fields)
         return bool(self._invalid_cells or pending or self.loadValueInput.isModified())
 
     def set_model(self, model: StructuralModel) -> None:
@@ -151,6 +154,8 @@ class PreprocessorPage(QWidget):
         self._load_target = None
         self._support_node = 0
         self._invalid_cells.clear()
+        self.loadsVisibleButton.setChecked(True)
+        self.structure_view.set_loads_visible(True)
         self.inspectorTabs.setCurrentIndex(0)
         for field in self._bar_fields:
             field.setModified(False)
@@ -192,7 +197,8 @@ class PreprocessorPage(QWidget):
         Returns:
             Запись с выбранной точностью отображения.
         '''
-        return format_quantity(value, self.numberFormatCombo.currentIndex() == 1)
+        index = self.numberFormatCombo.currentIndex()
+        return format_quantity(value, index == 1, places=6 if index == 2 else None)
 
     def _configure_table(self, table: QTableWidget) -> None:
         '''Настраивает таблицу и точный редактор чисел.
@@ -220,20 +226,23 @@ class PreprocessorPage(QWidget):
             value: Текст или Decimal.
             editable: Разрешение редактирования.
         '''
-        entry = QTableWidgetItem(self._format(value) if isinstance(value, Decimal) else str(value))
+        entry = table.item(row, column)
+        if entry is None:
+            entry = QTableWidgetItem()
+            table.setItem(row, column, entry)
+        entry.setText(self._format(value) if isinstance(value, Decimal) else str(value))
         entry.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
         if editable:
             entry.setFlags(entry.flags() | Qt.ItemFlag.ItemIsEditable)
             entry.setData(Qt.ItemDataRole.UserRole, str(value))
             entry.setToolTip(str(value))
-        table.setItem(row, column, entry)
 
     def _refresh(self) -> None:
         '''Обновляет представления, сохраняя ещё не применённый ввод.'''
         self._updating = True
         count = len(self._model.bars)
         self.dataCard.setVisible(bool(count))
-        self.canvasCard.setMinimumHeight(180 if self._narrow and not count else 275)
+        self.canvasCard.setMinimumHeight(180 if self._narrow and not count else 360)
         self.barsTable.setRowCount(count)
         for row, bar in enumerate(self._model.bars):
             self._cell(self.barsTable, row, 0, f'{row + 1:02d}')
@@ -265,7 +274,8 @@ class PreprocessorPage(QWidget):
             self._fill_bar_fields()
         self._update_bar_actions()
         self.structure_view.set_model(self._model)
-        self.structure_view.set_number_format(self.numberFormatCombo.currentIndex() == 1)
+        index = self.numberFormatCombo.currentIndex()
+        self.structure_view.set_number_format(index == 1, places=6 if index == 2 else None)
         if self._selected_bar >= 0:
             self.barsTable.selectRow(self._selected_bar)
             self.structure_view.select_bar(self._selected_bar)
@@ -285,7 +295,7 @@ class PreprocessorPage(QWidget):
         self.selectedBarLabel.setText(f'Стержень {self._selected_bar + 1:02d}' if valid else 'Новый стержень')
         for field, attribute in zip(self._bar_fields, self._bar_attributes):
             field.setEnabled(True)
-            field.setText(str(getattr(self._model.bars[self._selected_bar], attribute)) if valid else '')
+            field.setText(str(getattr(self._model.bars[self._selected_bar], attribute)) if valid else '1')
             field.setModified(False)
             set_input_error(field, False)
         self._update_bar_actions()
@@ -325,10 +335,22 @@ class PreprocessorPage(QWidget):
         self._update_bar_actions()
         for field in self._bar_fields:
             field.setEnabled(True)
-            field.clear()
+            field.setText('1')
             field.setModified(False)
         self.lengthInput.setFocus()
         self._reveal_timer.start(0)
+
+    def _remove_bar_by_number(self) -> None:
+        '''Выбирает стержень для удаления по его номеру в цепочке.'''
+        if not self._model.bars or not self.commit_pending_edits():
+            return
+        number, accepted = QInputDialog.getInt(
+            self, 'Удалить стержень', 'Номер стержня',
+            max(1, self._selected_bar + 1), 1, len(self._model.bars),
+        )
+        if accepted:
+            self._select_bar(number - 1)
+            self._remove_bar()
 
     def _scroll_inspector_into_view(self) -> None:
         '''Прокручивает страницу к редактору после завершения компоновки.'''
@@ -755,8 +777,6 @@ class PreprocessorPage(QWidget):
             table.setFocus()
             return False
         pending_bar = any(field.isModified() for field in self._bar_fields)
-        if self._adding_bar:
-            pending_bar = any(field.text().strip() for field in self._bar_fields)
         if pending_bar and not self._apply_bar():
             return False
         if self.loadValueInput.isModified() and not self._apply_load():
@@ -788,7 +808,7 @@ class PreprocessorPage(QWidget):
         if self._narrow == narrow:
             return
         self._narrow = narrow
-        self.canvasCard.setMinimumHeight(180 if narrow and not self._model.bars else 275)
+        self.canvasCard.setMinimumHeight(180 if narrow and not self._model.bars else 360)
         margin = 12 if narrow else 20
         self.pageLayout.setContentsMargins(margin, margin, margin, margin)
         self.workspaceSplitter.setOrientation(Qt.Orientation.Vertical if narrow else Qt.Orientation.Horizontal)

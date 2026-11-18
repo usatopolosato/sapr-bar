@@ -101,6 +101,12 @@
         </widget>
        </item>
        <item>
+        <widget class="QToolButton" name="projectButton">
+         <property name="text"><string>Проект</string></property>
+         <property name="minimumSize"><size><width>80</width><height>34</height></size></property>
+        </widget>
+       </item>
+       <item>
         <widget class="QToolButton" name="themeButton">
          <property name="text">
           <string>Тема</string>

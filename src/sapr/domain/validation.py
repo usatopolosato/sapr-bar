@@ -30,18 +30,19 @@ class ModelValidationError(ValueError):
         super().__init__('\n'.join(issue.message for issue in issues))
 
 
-def validate_model(model: StructuralModel) -> tuple[ValidationIssue, ...]:
+def validate_model(model: StructuralModel, *, ready: bool = True) -> tuple[ValidationIssue, ...]:
     '''Проверяет размеры массивов, значения параметров и наличие опоры.
 
     Args:
         model: Исходные данные в единицах СИ.
+        ready: Требовать непустую конструкцию и хотя бы одну опору для расчёта.
 
     Returns:
         Ошибки в порядке проверки параметров.
     '''
     issues: list[ValidationIssue] = []
     count = len(model.bars)
-    if count == 0:
+    if count == 0 and ready:
         issues.append(ValidationIssue('Добавьте хотя бы один стержень', 'bars'))
     if count > 10000:
         issues.append(ValidationIssue('Допустимо не более 10000 стержней', 'bars'))
@@ -78,6 +79,6 @@ def validate_model(model: StructuralModel) -> tuple[ValidationIssue, ...]:
         issues.append(ValidationIssue('Опоры - неверное число узлов', 'supports'))
     elif any(not isinstance(value, bool) for value in model.supports):
         issues.append(ValidationIssue('Опоры должны быть заданы для каждого узла', 'supports'))
-    elif count and not any(model.supports):
+    elif ready and count and not any(model.supports):
         issues.append(ValidationIssue('Задайте хотя бы одну жёсткую опору', 'supports'))
     return tuple(issues)

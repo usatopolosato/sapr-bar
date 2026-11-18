@@ -16,6 +16,7 @@ class WelcomePage(QWidget):
 
     createRequested = pyqtSignal()
     openRequested = pyqtSignal()
+    importRequested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -23,6 +24,7 @@ class WelcomePage(QWidget):
         self.structure_view = StructureView.replace(self.welcomeStructureView, compact=True)
         self.createProjectButton.clicked.connect(self.createRequested.emit)
         self.openProjectButton.clicked.connect(self.openRequested.emit)
+        self.importProjectButton.clicked.connect(self.importRequested.emit)
 
     def resizeEvent(self, event) -> None:
         '''Перестраивает стартовый экран по доступной ширине.

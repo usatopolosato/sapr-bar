@@ -3,12 +3,13 @@
 from decimal import Decimal, ROUND_HALF_EVEN, localcontext
 
 
-def format_quantity(value: Decimal, compact: bool = False) -> str:
+def format_quantity(value: Decimal, compact: bool = False, *, places: int | None = None) -> str:
     '''Возвращает точную или краткую запись физической величины.
 
     Args:
         value: Точное значение физической величины в СИ.
         compact: Признак краткой записи с округлением только для показа.
+        places: Число дробных знаков для отдельного режима отображения.
 
     Returns:
         В точном режиме возвращается полная десятичная запись.
@@ -23,6 +24,17 @@ def format_quantity(value: Decimal, compact: bool = False) -> str:
         raise ValueError('Физическая величина должна быть конечной')
     if value.is_zero():
         return '0'
+    if places is not None:
+        if not 0 <= places <= 12:
+            raise ValueError('Точность отображения должна быть от 0 до 12')
+        with localcontext() as context:
+            context.rounding = ROUND_HALF_EVEN
+            context.prec = max(28, len(value.as_tuple().digits), value.adjusted() + places + 2)
+            if -places <= value.adjusted() <= 6:
+                rounded = value.quantize(Decimal(1).scaleb(-places))
+                return format_quantity(rounded)
+            mantissa, exponent = format(value, f'.{places}e').split('e')
+        return f'{mantissa.rstrip("0").rstrip(".") if "." in mantissa else mantissa}e{int(exponent)}'
     if compact:
         with localcontext() as context:
             context.rounding = ROUND_HALF_EVEN

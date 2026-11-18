@@ -79,6 +79,7 @@ class ProcessorWorkflowTests(unittest.TestCase):
         draft = self.store.create(self.root, 'Новый проект')
         self.window._activate_project(draft)
         self._assert_module_availability(False, False)
+        self.window.navigate(Page.PROJECT)
         self.window.project_page.processorButton.click()
         self.assertIs(self.window.current_page, Page.PROJECT)
         self.window.project_page.postprocessorButton.click()

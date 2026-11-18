@@ -306,7 +306,7 @@
            <item>
             <widget class="QComboBox" name="numberFormatCombo">
              <property name="currentIndex">
-              <number>1</number>
+              <number>2</number>
              </property>
              <item>
               <property name="text">
@@ -318,6 +318,7 @@
                <string>Кратко</string>
               </property>
              </item>
+             <item><property name="text"><string>6 знаков</string></property></item>
             </widget>
            </item>
            <item>
@@ -832,7 +833,7 @@
             </layout>
            </item>
            <item>
-            <widget class="QPushButton" name="removeBarButton">
+            <widget class="QToolButton" name="removeBarButton">
              <property name="text">
               <string>Удалить стержень</string>
              </property>

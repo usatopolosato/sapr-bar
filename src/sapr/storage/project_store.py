@@ -102,12 +102,15 @@ class ProjectStore:
             values.append((name, stat.st_mtime_ns, stat.st_size))
         return tuple(values)
 
-    def create(self, parent: Path, name: str) -> Project:
+    def create(self, parent: Path, name: str, *, model: StructuralModel | None = None,
+               folder_name: str | None = None) -> Project:
         '''Создаёт новую папку с пустым черновиком проекта.
 
         Args:
             parent: Родительская папка, которая будет создана при необходимости.
             name: Имя создаваемой папки и проекта.
+            model: Исходная модель для импорта или пустой проект.
+            folder_name: Имя отдельной папки при совпадении названий проектов.
 
         Returns:
             Сохранённый пустой проект.
@@ -124,14 +127,14 @@ class ProjectStore:
             raise ProjectFormatError('Родительский путь или его часть заняты файлом') from error
         except PermissionError as error:
             raise PermissionError('Недостаточно прав для создания родительской папки') from error
-        folder = parent / name
+        folder = parent / self._validate_name(folder_name if folder_name is not None else name)
         try:
             folder.mkdir(exist_ok=False)
         except FileExistsError as error:
             raise ProjectFormatError('По пути проекта уже существует файл или папка') from error
         except PermissionError as error:
             raise PermissionError('Недостаточно прав для создания папки проекта') from error
-        project = Project(folder, name, StructuralModel())
+        project = Project(folder, name, model if model is not None else StructuralModel())
         try:
             return self.save(project, project.model)
         except Exception:

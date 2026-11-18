@@ -4,7 +4,7 @@ from math import ceil, floor
 from decimal import Decimal
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QTransform
 from PyQt6.QtWidgets import (
     QGraphicsItem,
     QGraphicsRectItem,
@@ -50,9 +50,6 @@ class BarItem(QGraphicsRectItem):
         painter.setBrush(QColor(self.colors.bar_selected if active else self.colors.bar_fill))
         painter.setPen(QPen(QColor(self.colors.bar_selected_border if active else self.colors.bar_border), 1.6))
         painter.drawRoundedRect(rect, 3, 3)
-        painter.setPen(QColor(self.colors.bar_selected_text if active else self.colors.bar_text))
-        painter.setFont(QFont('Segoe UI', 12, QFont.Weight.DemiBold))
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f'{self.data(0) + 1:02d}')
 
     def hoverEnterEvent(self, event) -> None:
         '''Подсвечивает стержень при наведении курсора.
@@ -92,16 +89,19 @@ class StructureView(QGraphicsView):
         self._grid_visible = True
         self._loads_visible = not compact
         self._zoom = 1.0
+        self._base_scale = (1.0, 1.0)
         self._bars: list[BarItem] = []
         self._load_items: list[QGraphicsItem] = []
         self._quantity_labels = []
+        self._annotations = []
         self._compact_numbers = True
+        self._number_places = None
         self._colors = DARK_COLORS
         self._theme_bindings: list[tuple[QGraphicsItem, str, str]] = []
         self.setFrameShape(QGraphicsView.Shape.NoFrame)
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
@@ -127,6 +127,7 @@ class StructureView(QGraphicsView):
         self._bars.clear()
         self._load_items.clear()
         self._quantity_labels.clear()
+        self._annotations.clear()
         self._theme_bindings.clear()
         self._build_scene()
         if self._bars:
@@ -155,7 +156,8 @@ class StructureView(QGraphicsView):
         original.deleteLater()
         return view
 
-    def _text(self, x: float, y: float, text: str, color: str = 'muted', size: int = 11):
+    def _text(self, x: float, y: float, text: str, color: str = 'muted', size: int = 11,
+              *, center: bool = False, span: float = 0):
         '''Добавляет надпись в координатах сцены.
 
         Args:
@@ -164,6 +166,8 @@ class StructureView(QGraphicsView):
             text: Содержимое надписи.
             color: Имя цвета текста в палитре темы.
             size: Размер шрифта в пунктах.
+            center: Выравнивание относительно горизонтального центра.
+            span: Доступная ширина для скрытия тесно расположенных подписей.
 
         Returns:
             Созданный текстовый элемент сцены.
@@ -172,6 +176,9 @@ class StructureView(QGraphicsView):
         item.setBrush(QColor(getattr(self._colors, color)))
         self._theme_bindings.append((item, 'brush', color))
         item.setPos(x, y)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
+        self._annotations.append((item, x, y, center, span))
+        item.setZValue(5)
         item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         return item
 
@@ -190,6 +197,7 @@ class StructureView(QGraphicsView):
             Созданный графический элемент.
         '''
         item = self.scene().addLine(x1, y1, x2, y2, QPen(QColor(getattr(self._colors, color)), width))
+        item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         self._theme_bindings.append((item, 'pen', color))
         return item
 
@@ -207,9 +215,11 @@ class StructureView(QGraphicsView):
         '''
         sign = 1 if end > start else -1
         line = self._line(start, y, end, y, color, 2)
-        head = QPolygonF([QPointF(end, y), QPointF(end - sign * 9, y - 4), QPointF(end - sign * 9, y + 4)])
+        size = min(9, abs(end - start) * 0.4)
+        head = QPolygonF([QPointF(end, y), QPointF(end - sign * size, y - size / 2), QPointF(end - sign * size, y + size / 2)])
         tint = QColor(getattr(self._colors, color))
         triangle = self.scene().addPolygon(head, QPen(tint), tint)
+        triangle.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
         self._theme_bindings.extend([(triangle, 'pen', color), (triangle, 'brush', color)])
         return [line, triangle]
 
@@ -228,8 +238,14 @@ class StructureView(QGraphicsView):
             bar = BarItem(QRectF(left, 150 - height / 2, right - left, height), index, self._colors)
             self.scene().addItem(bar)
             self._bars.append(bar)
+            center = (left + right) / 2
+            span = right - left
+            self._text(center, 194, f'{index + 1:02d}', 'text', 10, center=True, span=span)
             self._line(left, 250, right, 250, 'dimension')
-            self._quantity_text(0, 260, self._model.bars[index].length_m, 'м', 'L', center=(left + right) / 2)
+            self._quantity_text(0, 260, self._model.bars[index].length_m, 'м', 'L', center=center, span=span)
+            if not self._compact:
+                self._quantity_text(0, 282, self._model.bars[index].modulus_pa, 'Па', 'E', center=center, span=span)
+                self._quantity_text(0, 304, self._model.bars[index].area_m2, 'м2', 'A', center=center, span=span)
         for index, x in enumerate(positions):
             self._line(x, 230, x, 258, 'dimension')
             tick = self._line(x - 4, 255, x + 4, 245, 'dimension')
@@ -237,17 +253,20 @@ class StructureView(QGraphicsView):
             adjacent = heights[max(0, index - 1):min(len(heights), index + 1)]
             top = 150 - max(adjacent) / 2
             self._line(x, 98, x, top - 4, 'dimension')
-            node = self.scene().addEllipse(x - 13, 72, 26, 26, QPen(QColor(self._colors.node_border)), QColor(self._colors.node_fill))
+            node = self.scene().addEllipse(-13, -13, 26, 26, QPen(QColor(self._colors.node_border)), QColor(self._colors.node_fill))
+            node.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations)
+            node.setPos(x, 85)
+            node.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+            span = min(positions[i + 1] - positions[i] for i in range(max(0, index - 1), min(len(heights), index + 1)))
+            self._annotations.append((node, x, 85, False, span))
             self._theme_bindings.extend([(node, 'pen', 'node_border'), (node, 'brush', 'node_fill')])
-            label = self._text(0, 72, str(index + 1), 'text', 10)
-            label.setX(x - label.boundingRect().width() / 2)
+            label = self._text(x, 85, str(index + 1), 'text', 10, center=True, span=span)
             label.setZValue(1)
             if index < len(self._model.supports) and self._model.supports[index]:
                 self._support(x, max(adjacent), index == len(positions) - 1)
         if not self._compact:
             self._draw_loads(positions)
-        for item in self._load_items:
-            item.setVisible(self._loads_visible)
+        self._update_annotations()
 
     def _geometry(self) -> tuple[list[float], list[float]]:
         '''Вычисляет размеры изображения без изменения физических величин.
@@ -298,6 +317,23 @@ class StructureView(QGraphicsView):
         Args:
             positions: Горизонтальные координаты узлов схемы.
         '''
+        for index, (left, right, value) in enumerate(zip(positions, positions[1:], self._model.distributed_loads)):
+            if not value:
+                continue
+            reserve = min(78, (right - left) * 0.36) + 12
+            start_x = left + (reserve if self._model.nodal_forces[index] > 0 else 10)
+            end_x = right - (reserve if self._model.nodal_forces[index + 1] < 0 else 10)
+            count = max(2, int((end_x - start_x) / 42))
+            step = (end_x - start_x) / count
+            for arrow in range(count):
+                start = start_x + arrow * step
+                end = start + min(28, step * 0.7)
+                if value < 0:
+                    start, end = end, start
+                self._load_items.extend(self._arrow(start, end, 150, 'distributed'))
+            self._load_items.append(self._quantity_text(
+                0, 30, value.copy_abs(), 'Н/м', 'q', 'distributed', center=(left + right) / 2, span=right - left,
+            ))
         for index, (position, value) in enumerate(zip(positions, self._model.nodal_forces)):
             if not value:
                 continue
@@ -305,28 +341,17 @@ class StructureView(QGraphicsView):
             neighbour = index if direction > 0 else index - 1
             available = positions[neighbour + 1] - positions[neighbour] if 0 <= neighbour < len(positions) - 1 else 180
             length = min(78, available * 0.36)
-            start = position + direction * 5
+            start = position
             end = start + direction * length
             self._load_items.extend(self._arrow(start, end, 150, 'force'))
-            self._load_items.append(self._quantity_text(
-                0, 192 + 20 * (index % 2), value, 'Н', 'F', 'force', center=(start + end) / 2,
-            ))
-        for left, right, value in zip(positions, positions[1:], self._model.distributed_loads):
-            if not value:
-                continue
-            count = max(2, int((right - left) / 42))
-            step = (right - left - 20) / count
-            for index in range(count):
-                start = left + 10 + index * step
-                end = start + min(28, step - 7)
-                if value < 0:
-                    start, end = end, start
-                self._load_items.extend(self._arrow(start, end, 44, 'distributed'))
-            self._load_items.append(self._quantity_text(
-                0, 10, value, 'Н/м', 'q', 'distributed', center=(left + right) / 2,
-            ))
+            label = self._quantity_text(
+                0, 108, value.copy_abs(), 'Н', 'F', 'force', center=(start + end) / 2, span=available,
+            )
+            bar = self._bars[max(0, min(neighbour, len(self._bars) - 1))]
+            label.setData(1, bar.rect().top())
+            self._load_items.append(label)
 
-    def _quantity_text(self, x: float, y: float, value: Decimal, unit: str, prefix: str = '', color: str = 'muted', center: float | None = None):
+    def _quantity_text(self, x: float, y: float, value: Decimal, unit: str, prefix: str = '', color: str = 'muted', center: float | None = None, span: float = 0):
         '''Добавляет подпись физической величины в СИ.
 
         Args:
@@ -337,29 +362,47 @@ class StructureView(QGraphicsView):
             prefix: Текст перед числом.
             color: Имя цвета подписи в палитре темы.
             center: Центр размерной линии для выравнивания подписи.
+            span: Ширина стержня для выбора уровня детализации.
 
         Returns:
             Созданная подпись величины.
         '''
-        text = f'{prefix} = {format_quantity(value, self._compact_numbers)} {unit}'
-        item = self._text(x, y, text, color, 10)
+        text = f'{prefix} = {format_quantity(value, self._compact_numbers, places=self._number_places)} {unit}'
+        item = self._text(center if center is not None else x, y, text, color, 10, center=center is not None, span=span)
         self._quantity_labels.append((item, prefix, value, unit, center))
-        if center is not None:
-            item.setX(center - item.boundingRect().width() / 2)
         return item
 
-    def set_number_format(self, compact: bool) -> None:
+    def set_number_format(self, compact: bool, *, places: int | None = None) -> None:
         '''Меняет запись чисел в подписях без изменения величин СИ.
 
         Args:
             compact: Признак краткой автоматической записи чисел.
+            places: Число дробных знаков для отображения с округлением.
         '''
         self._compact_numbers = compact
+        self._number_places = places
         for item, prefix, value, unit, center in self._quantity_labels:
-            item.setText(f'{prefix} = {format_quantity(value, compact)} {unit}')
-            if center is not None:
-                item.setX(center - item.boundingRect().width() / 2)
+            item.setText(f'{prefix} = {format_quantity(value, compact, places=places)} {unit}')
         self.fit_model()
+
+    def _update_annotations(self) -> None:
+        '''Сохраняет экранный размер подписей и скрывает их при наложении.'''
+        scale = max(self.transform().m11(), 0.0001)
+        vertical = max(self.transform().m22(), 0.0001)
+        loads = set(self._load_items)
+        for item, x, y, center, span in self._annotations:
+            width = item.boundingRect().width()
+            visible = not span or span * scale >= max(34, width + 8)
+            if item in loads:
+                visible = visible and self._loads_visible
+            item.setVisible(visible)
+            height = item.boundingRect().height()
+            y = 150 + (y - 150) * max(1, 0.85 / vertical)
+            top = item.data(1)
+            if top is not None:
+                y = top - (8 + height / 2) / vertical
+            item.setPos(x - width / (2 * scale) if center else x,
+                        y - height / (2 * vertical) if center else y)
 
     def set_theme(self, colors: ThemeColors) -> None:
         '''Применяет палитру к схеме без изменения масштаба и выбора.
@@ -396,6 +439,8 @@ class StructureView(QGraphicsView):
         self.scene().clearSelection()
         self._bars[index].setSelected(True)
         self.scene().blockSignals(False)
+        if self._zoom > 1:
+            self.ensureVisible(self._bars[index], 40, 40)
         self.barSelected.emit(index)
 
     def _selection_changed(self) -> None:
@@ -426,6 +471,8 @@ class StructureView(QGraphicsView):
 
     def fit_model(self) -> None:
         '''Вписывает модель в доступный размер графического вида.'''
+        self.resetTransform()
+        self._update_annotations()
         if not self._bars:
             bounds = QRectF(50, 65, 440, 180)
         else:
@@ -435,8 +482,13 @@ class StructureView(QGraphicsView):
                     bounds = bounds.united(item.sceneBoundingRect())
             bounds = bounds.adjusted(-22, -18, 22, 18)
         self.scene().setSceneRect(bounds)
-        self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
+        horizontal = max(0.0001, (self.viewport().width() - 8) / bounds.width())
+        vertical = max(0.0001, (self.viewport().height() - 8) / bounds.height())
+        self._base_scale = (min(horizontal, vertical), min(vertical, max(0.85, horizontal)))
+        self.setTransform(QTransform.fromScale(*self._base_scale))
+        self.centerOn(bounds.center())
         self._zoom = 1.0
+        self._update_annotations()
 
     def zoom_by(self, factor: float) -> None:
         '''Изменяет масштаб в пределах читаемого диапазона.
@@ -446,8 +498,11 @@ class StructureView(QGraphicsView):
         '''
         next_zoom = self._zoom * factor
         if 0.55 <= next_zoom <= 24:
-            self.scale(factor, factor)
+            horizontal = self._base_scale[0] * next_zoom
+            vertical = max(self._base_scale[1], horizontal) if next_zoom >= 1 else self._base_scale[1] * next_zoom
+            self.scale(horizontal / self.transform().m11(), vertical / self.transform().m22())
             self._zoom = next_zoom
+            self._update_annotations()
 
     def wheelEvent(self, event) -> None:
         '''Масштабирует схему колесом мыши.
