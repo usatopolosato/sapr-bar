@@ -188,7 +188,7 @@ def test_old_project_migrates_to_compact_sources_only_when_saved(tmp_path):
 
 
 def test_marked_sources_contain_named_arrays_and_original_row_markers():
-    '''Новые файлы имеют массивы и нумерацию в оформлении примера САПР BAR.'''
+    '''Новые файлы имеют массивы и нумерацию в оформлении примера UPS.'''
     construction, loading = encode_sources('Учебный проект', demo_model())
     assert construction.startswith('CN: Учебный проект\n')
     assert loading.startswith('LD: Учебный проект\n')

@@ -40,19 +40,39 @@ def solution(*, length='2', force='0', load='2', limit='10', fixed=True, modulus
     return AxialPostprocessor().analyze(AxialProcessor().solve(source))
 
 
-@pytest.mark.parametrize('step', ['0.3', '0.7', '1', '2', '10'])
+@pytest.mark.parametrize('step', ['0.3', '0.7', '1', '2', '2.000001', '10'])
 def test_step_grid_contains_endpoint_and_analytic_extremum(app, step):
-    '''Дополняет физический шаг концом стержня и вершиной параболы.'''
+    '''При шаге больше длины оставляет концы, иначе добавляет экстремум.'''
     result = solution()
     sample = BarSamples(result.bars[0], step=D(step))
     actual = [sample.position(row) for row in range(sample.count)]
     regular = [D(step) * i for i in range(int(D(2) / D(step)) + 1)]
-    assert actual == sorted(set(regular + [D(0), D(1), D(2)]))
+    expected = [D(0), D(2)] if D(step) > D(2) else sorted(set(regular + [D(0), D(1), D(2)]))
+    assert actual == expected
     table = ResponseTableModel(result, step=D(step))
     report_rows = list(ResultReport._section_rows(sample))
     assert [table.section(row).x_m for row in range(table.rowCount())] == actual
     assert [row[0] for row in report_rows] == actual
     assert table.index(0, 2).data(Qt.ItemDataRole.TextAlignmentRole) == Qt.AlignmentFlag.AlignCenter
+
+
+def test_large_step_is_checked_for_each_bar(app):
+    '''Учитывает длину каждого стержня и сохраняет все величины в концах.'''
+    model = StructuralModel(tuple(Bar(D(length), D(1), D(1), D(10)) for length in (2, 4)),
+                            (D(0), D(0), D(0)), (D(2), D(2)), (True, True, True))
+    result = AxialPostprocessor().analyze(AxialProcessor().solve(model))
+    table = ResponseTableModel(result, step=D(3))
+    expected = [(0, D(0)), (0, D(2)), (1, D(0)), (1, D(2)), (1, D(3)), (1, D(4))]
+    assert table.rowCount() == len(expected)
+    for row, (bar_index, x) in enumerate(expected):
+        point = table.section(row)
+        assert point == result.at(bar_index, x)
+        for column, value in zip((2, 3, 4), (point.force_n, point.stress_pa, point.displacement_m)):
+            assert table.index(row, column).data(Qt.ItemDataRole.UserRole) == value
+    samples = BarSamples(result.bars[0], step=D(3))
+    assert [row[0] for row in ResultReport._section_rows(samples)] == [D(0), D(2)]
+    extrema = BarSamples(result.bars[0], step=D(3), extrema_only=True)
+    assert D(1) in [extrema.position(row) for row in range(extrema.count)]
 
 
 def test_extrema_are_unique_and_sampling_rejects_excessive_density():

@@ -10,16 +10,17 @@
 
 [Setup]
 AppId={#AppId}
-AppName=САПР BAR
+AppName=UPS
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 AppCopyright={#AppPublisher}
 VersionInfoCompany={#AppPublisher}
-VersionInfoDescription=Установка САПР BAR
-VersionInfoProductName=САПР BAR
+VersionInfoDescription=Установка UPS
+VersionInfoProductName=UPS
 VersionInfoProductVersion={#AppVersion}
-DefaultDirName={localappdata}\Programs\SAPR BAR
-DefaultGroupName=САПР BAR
+DefaultDirName={localappdata}\Programs\UPS
+DefaultGroupName=UPS
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 DisableDirPage=no
@@ -30,13 +31,13 @@ MinVersion=10.0.17763
 WizardStyle=modern dynamic
 WizardSizePercent=110,110
 SetupIconFile=..\src\sapr\resources\icons\app.ico
-UninstallDisplayIcon={app}\SAPR BAR.exe
+UninstallDisplayIcon={app}\UPS.exe
 OutputDir=..\dist
-OutputBaseFilename=SAPR-BAR-{#AppVersion}-setup
+OutputBaseFilename=UPS-{#AppVersion}-setup
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=no
-UninstallDisplayName=САПР BAR
+UninstallDisplayName=UPS
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
@@ -51,26 +52,35 @@ Name: "compact"; Description: "Только приложение"
 Name: "custom"; Description: "Выборочная установка"; Flags: iscustom
 
 [Components]
-Name: "application"; Description: "САПР BAR"; Types: full compact custom; Flags: fixed
-Name: "examples"; Description: "Сохранить 12 задач в единичных величинах в Документы\САПР BAR\Примеры"; Types: full
+Name: "application"; Description: "UPS"; Types: full compact custom; Flags: fixed
+Name: "examples"; Description: "Сохранить 12 задач в единичных величинах в Документы\UPS\JSON"; Types: full
 
 [Tasks]
 Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"; Flags: unchecked
 
 [Files]
-Source: "..\dist\SAPR BAR\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: application
-Source: "..\build\examples\*"; DestDir: "{userdocs}\САПР BAR\Примеры"; Flags: onlyifdoesntexist uninsneveruninstall recursesubdirs createallsubdirs; Components: examples
+Source: "..\dist\UPS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: application
+Source: "..\build\examples\JSON\*.json"; DestDir: "{userdocs}\UPS\JSON"; Flags: onlyifdoesntexist uninsneveruninstall; Components: examples
 Source: "..\docs\Руководство.txt"; DestDir: "{app}"; Flags: ignoreversion; Components: application
 
 [Icons]
-Name: "{group}\САПР BAR"; Filename: "{app}\SAPR BAR.exe"; AppUserModelID: "Usatopolosato.SaprBar"
+Name: "{group}\UPS"; Filename: "{app}\UPS.exe"; AppUserModelID: "Usatopolosato.UPS"
 Name: "{group}\Руководство"; Filename: "{app}\Руководство.txt"
-Name: "{group}\Учебные задачи"; Filename: "{userdocs}\САПР BAR\Примеры"; Components: examples
-Name: "{group}\Удалить САПР BAR"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\САПР BAR"; Filename: "{app}\SAPR BAR.exe"; Tasks: desktopicon; AppUserModelID: "Usatopolosato.SaprBar"
+Name: "{group}\Учебные задачи"; Filename: "{userdocs}\UPS\JSON"; Components: examples
+Name: "{group}\Удалить UPS"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\UPS"; Filename: "{app}\UPS.exe"; Tasks: desktopicon; AppUserModelID: "Usatopolosato.UPS"
+
+[InstallDelete]
+Type: files; Name: "{app}\SAPR BAR.exe"
+Type: files; Name: "{userprograms}\САПР BAR\САПР BAR.lnk"
+Type: files; Name: "{userprograms}\САПР BAR\Руководство.lnk"
+Type: files; Name: "{userprograms}\САПР BAR\Учебные задачи.lnk"
+Type: files; Name: "{userprograms}\САПР BAR\Удалить САПР BAR.lnk"
+Type: dirifempty; Name: "{userprograms}\САПР BAR"
+Type: files; Name: "{autodesktop}\САПР BAR.lnk"
 
 [Run]
-Filename: "{app}\SAPR BAR.exe"; Description: "Запустить САПР BAR"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\UPS.exe"; Description: "Запустить UPS"; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -101,7 +111,7 @@ begin
   RegistryKey := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppId}_is1');
   if not RegQueryStringValue(HKCU, RegistryKey, 'UninstallString', UninstallPath) then Exit;
   UninstallPath := RemoveQuotes(UninstallPath);
-  WizardForm.WelcomeLabel1.Caption := 'САПР BAR уже установлена';
+  WizardForm.WelcomeLabel1.Caption := 'UPS уже установлена';
   WizardForm.WelcomeLabel2.Caption := 'Для повторной установки нажмите «Далее». При удалении учебные задачи сохранятся в Документах.';
   WizardForm.WelcomeLabel2.AdjustHeight;
   RemoveButton := TNewButton.Create(WizardForm);

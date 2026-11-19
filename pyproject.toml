@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sapr-bar"
+name = "ups"
 dynamic = ["version"]
 description = "САПР стержневых систем: растяжение и сжатие"
 requires-python = ">=3.11"
@@ -14,7 +14,7 @@ authors = [{name = "Usatopolosato"}]
 test = ["pytest>=8"]
 
 [project.gui-scripts]
-sapr-bar = "sapr.app:main"
+ups = "sapr.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

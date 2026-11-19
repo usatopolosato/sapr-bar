@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>САПР BAR - Usatopolosato</string>
+   <string>UPS - Usatopolosato</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="rootLayout">
@@ -63,7 +63,7 @@
        <item>
         <widget class="QLabel" name="brandLabel">
          <property name="text">
-          <string>САПР BAR</string>
+          <string>UPS</string>
          </property>
         </widget>
        </item>

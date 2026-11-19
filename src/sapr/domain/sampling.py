@@ -16,7 +16,7 @@ class BarSamples:
         extrema_only: Выводить только уникальные координаты экстремумов.
     """
 
-    MAX_ROWS = 20000000
+    MAX_ROWS = 20_000_000
 
     def __init__(self, bar: BarResponse, subdivisions: int = 10, *,
                  step: Decimal | None = None, extrema_only: bool = False) -> None:
@@ -41,7 +41,9 @@ class BarSamples:
                 if ratio > self.MAX_ROWS - 8:
                     raise ValueError("Слишком маленький шаг. Увеличьте шаг таблицы")
                 self.intervals = int(ratio.to_integral_value(rounding=ROUND_CEILING))
-            self.extras = tuple(x for x in bar.critical_positions() if not self._on_grid(x))
+            self.extras = ()
+            if step is None or step <= bar.geometry.length_m:
+                self.extras = tuple(x for x in bar.critical_positions() if not self._on_grid(x))
             self.extra_rows = tuple(
                 int(self._grid_index(x)) + 1 + i for i, x in enumerate(self.extras))
             self.count = self.intervals + 1 + len(self.extras)

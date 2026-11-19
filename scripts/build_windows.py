@@ -30,8 +30,8 @@ def prepare_version() -> None:
         'CompanyName': AUTHOR,
         'FileDescription': NAME,
         'FileVersion': VERSION,
-        'InternalName': 'SAPR BAR',
-        'OriginalFilename': 'SAPR BAR.exe',
+        'InternalName': 'UPS',
+        'OriginalFilename': 'UPS.exe',
         'ProductName': NAME,
         'ProductVersion': VERSION,
         'LegalCopyright': AUTHOR,
@@ -47,7 +47,7 @@ def prepare_version() -> None:
 
 
 def prepare_examples() -> None:
-    '''Готовит проекты и JSON учебных задач из одного набора исходных данных.'''
+    '''Готовит 12 JSON-задач в единичных величинах для установщика.'''
     sources = ROOT / 'Проекты' / 'Единичные'
     target = ROOT / 'build' / 'examples'
     if target.is_symlink() or target.resolve() != ROOT / 'build' / 'examples':
@@ -59,17 +59,14 @@ def prepare_examples() -> None:
     names = [f'Простая задача {number:02d}' for number in range(1, 6)]
     names.extend(f'Задача {number:02d}' for number in range(1, 7))
     names.append('Задача КР')
-    projects = target / 'Единичные'
-    json_folder = target / 'JSON' / 'Единичные'
+    json_folder = target / 'JSON'
     json_folder.mkdir(parents=True)
     for name in names:
         project = store.load(sources / name)
         issues = validate_model(project.model)
         if issues:
             raise ValueError(f'{name}: {issues[0].message}')
-        store.create(projects, name, model=project.model)
         write_project_json(json_folder / f'{name}.json', project.model)
-    shutil.copy2(sources / 'Параметры.txt', projects)
 
 
 def prepare_notices() -> None:
@@ -110,10 +107,10 @@ def main() -> None:
     prepare_examples()
     prepare_notices()
     subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean',
-                    str(ROOT / 'packaging' / 'sapr_bar.spec')], cwd=ROOT, check=True)
+                    str(ROOT / 'packaging' / 'ups.spec')], cwd=ROOT, check=True)
     subprocess.run([str(compiler), f'/DAppVersion={VERSION}', f'/DAppPublisher={AUTHOR}',
                     str(ROOT / 'packaging' / 'setup.iss')], cwd=ROOT, check=True)
-    packages = sorted((ROOT / 'dist').glob(f'SAPR-BAR-{VERSION}-*.exe'))
+    packages = sorted((ROOT / 'dist').glob(f'UPS-{VERSION}-*.exe'))
     checksums = [f'{sha256(path.read_bytes()).hexdigest()}  {path.name}' for path in packages]
     (ROOT / 'dist' / 'SHA256SUMS.txt').write_text('\n'.join(checksums) + '\n', encoding='ascii')
     print('\n'.join(str(path) for path in packages))

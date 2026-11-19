@@ -246,7 +246,7 @@ class ProjectStore:
         if not isinstance(manifest, dict):
             raise ProjectFormatError('KPR должен содержать объект JSON')
         if 'format' in manifest and manifest['format'] != 'sapr-bar-project':
-            raise ProjectFormatError('Это не файл проекта САПР BAR')
+            raise ProjectFormatError('Это не файл проекта UPS')
         if 'version' in manifest and (type(manifest['version']) is not int or manifest['version'] != 1):
             raise ProjectFormatError('Версия файла проекта не поддерживается')
         if 'units' in manifest and manifest['units'] != 'SI':

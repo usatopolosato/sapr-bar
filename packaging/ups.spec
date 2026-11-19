@@ -22,12 +22,12 @@ analysis = Analysis(
 archive = PYZ(analysis.pure)
 application = EXE(
     archive, analysis.scripts, [], exclude_binaries=True,
-    name='SAPR BAR', console=False, icon=icon, version=version,
+    name='UPS', console=False, icon=icon, version=version,
     upx=False, disable_windowed_traceback=False,
 )
-COLLECT(application, analysis.binaries, analysis.datas, name='SAPR BAR', upx=False)
+COLLECT(application, analysis.binaries, analysis.datas, name='UPS', upx=False)
 EXE(
     archive, analysis.scripts, analysis.binaries, analysis.datas,
-    name=f'SAPR-BAR-{VERSION}-portable', console=False,
+    name=f'UPS-{VERSION}-portable', console=False,
     icon=icon, version=version, upx=False, disable_windowed_traceback=False,
 )

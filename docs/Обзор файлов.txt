@@ -1,4 +1,4 @@
-Архитектура и файлы САПР BAR
+Архитектура и файлы UPS
 Дата: 18 ноября 2026
 Автор программы: Usatopolosato
 
@@ -293,7 +293,7 @@ packaging/entry.py
 packaging/requirements.txt
   Закрепляет версии PyQt6, Qt, sip, PyInstaller и hooks для повторяемой сборки.
 
-packaging/sapr_bar.spec
+packaging/ups.spec
   Собирает вариант с отдельными библиотеками и один portable EXE. Включает формы, стили, иконки, справку и сведения о компонентах.
 
 packaging/setup.iss

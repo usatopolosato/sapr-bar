@@ -179,7 +179,7 @@ def _section_text(name: str, dimensions: str, columns: tuple[str, ...], rows: li
 
 
 def _source_text(kind: str, name: str, labels: tuple[str, ...], counts: tuple[int, ...], sections: tuple) -> str:
-    """Собирает внешний файл в табличном оформлении САПР BAR."""
+    """Собирает внешний файл в табличном оформлении UPS."""
     widths = [max(len(label), len(str(value))) for label, value in zip(labels, counts)]
     heading = "  ".join(label.rjust(width) for label, width in zip(labels, widths))
     values = "  ".join(str(value).rjust(width) for value, width in zip(counts, widths))
