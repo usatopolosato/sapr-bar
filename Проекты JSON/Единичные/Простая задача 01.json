@@ -12,9 +12,13 @@
     }
   ],
   "nodes": [
-{
+    {
+      "F": "0",
+      "fixed": true
+    },
+    {
       "F": "1",
-      "fixed": 1
+      "fixed": false
     }
   ]
 }
